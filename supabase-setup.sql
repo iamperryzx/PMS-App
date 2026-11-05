@@ -1,6 +1,7 @@
 -- Run this file once in Supabase Dashboard > SQL Editor.
 -- It creates the shared PMS schema with row-level security and a one-time owner code.
 -- Copy the final query result and keep it private until the first owner account is activated.
+-- Then run supabase-username-migration.sql to enable username/password staff accounts.
 -- In Authentication > Sign In / Providers > Email, either disable Confirm email
 -- or verify the first owner's email before logging in to claim the setup code.
 create table if not exists public.pms_profiles (

@@ -284,8 +284,12 @@
         .guest-adjustment-fields { display: grid; grid-template-columns: minmax(120px, 0.8fr) minmax(140px, 1fr); gap: 10px; }
         .guest-adjustment-fields .form-group { margin-bottom: 10px; }
         .guest-adjustment-panel textarea, .guest-note-panel textarea { width: 100%; min-height: 72px; resize: vertical; }
-        .guest-adjustment-history { margin-top: 10px; color: var(--text-muted); font-size: 12px; line-height: 1.5; white-space: pre-line; }
+        .guest-adjustment-history { display: grid; gap: 7px; margin: 10px 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
         .guest-adjustment-history:empty { display: none; }
+        .guest-adjustment-entry { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 8px; border: 1px solid #e6e0d4; border-radius: 8px; background: #f7f5ef; }
+        .guest-adjustment-entry-text { min-width: 0; overflow-wrap: anywhere; }
+        .guest-adjustment-delete { flex: 0 0 auto; padding: 4px 8px; border: 0; border-radius: 6px; background: #fce8e8; color: var(--danger); font-weight: 700; cursor: pointer; }
+        .guest-adjustment-delete:hover { background: #f7d4d4; }
         .guest-note-panel { background: #f7f5ef; }
         .guest-note-panel .form-group { margin-bottom: 8px; }
         .guest-price-adjustment { color: #536d86; }
@@ -605,7 +609,7 @@
                 <h3>📜 Toàn Bộ Lịch Sử Hóa Đơn</h3>
                 <table class="custom-table">
                     <thead>
-                        <tr><th>Mã HĐ</th><th>Phòng</th><th>Hình thức</th><th>Thời gian vào - ra</th><th>Tổng tiền</th><th>Trạng thái</th><th>Thao tác</th></tr>
+                        <tr><th>Mã HĐ</th><th>Phòng</th><th>Hình thức</th><th>Thời gian vào</th><th>Thời gian ra</th><th>Tổng tiền</th><th>Trạng thái</th><th>Thao tác</th></tr>
                     </thead>
                     <tbody id="invoicesTableBody"></tbody>
                 </table>
@@ -641,7 +645,7 @@
                         <div id="repServiceRevenue" style="font-size: 18px; font-weight: bold; color: var(--success); margin-top: 5px;">0 VNĐ</div>
                     </div>
                     <div style="background: #f0fdf4; padding: 16px; border-radius: 8px;">
-                        <div style="font-size: 13px; color: var(--text-muted);">Tổng Thu khác</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">Tổng thu</div>
                         <div id="repIncomeTotal" style="font-size: 18px; font-weight: bold; color: var(--success); margin-top: 5px;">0 VNĐ</div>
                     </div>
                     <div style="background: #fef2f2; padding: 16px; border-radius: 8px;">
@@ -657,7 +661,7 @@
                 <h4 style="margin-top: 20px; margin-bottom: 10px;">📜 Lịch sử hóa đơn trong khoảng thời gian đã chọn:</h4>
                 <table class="custom-table">
                     <thead>
-                        <tr><th>Mã HĐ</th><th>Phòng</th><th>Hình thức</th><th>Thời gian vào - ra</th><th>Tổng tiền</th><th>Thao tác</th></tr>
+                        <tr><th>Mã HĐ</th><th>Phòng</th><th>Hình thức</th><th>Thời gian vào</th><th>Thời gian ra</th><th>Tổng tiền</th><th>Thao tác</th></tr>
                     </thead>
                     <tbody id="reportInvoicesTableBody"></tbody>
                 </table>
@@ -1507,11 +1511,55 @@
             document.getElementById("guestAdjustmentType").value = "discount";
             document.getElementById("guestAdjustmentAmount").value = "";
             document.getElementById("guestAdjustmentReason").value = "";
-            document.getElementById("guestAdjustmentHistory").textContent = (room.guestInfo.priceAdjustments || [])
-                .map(adjustment => `${adjustment.amount > 0 ? "Tăng" : "Giảm"} ${Math.abs(adjustment.amount).toLocaleString("vi-VN")}đ — ${adjustment.reason} (${formatDateTime(adjustment.createdAt)})`)
-                .join("\n");
+            renderGuestPriceAdjustmentHistory(room);
             document.getElementById("priceAdjustmentModal").style.display = "flex";
             document.getElementById("guestAdjustmentType").focus();
+        }
+
+        function renderGuestPriceAdjustmentHistory(room) {
+            const history = document.getElementById("guestAdjustmentHistory");
+            history.replaceChildren();
+            (room.guestInfo.priceAdjustments || []).forEach((adjustment, index) => {
+                const entry = document.createElement("div");
+                entry.className = "guest-adjustment-entry";
+
+                const text = document.createElement("span");
+                text.className = "guest-adjustment-entry-text";
+                const action = adjustment.amount > 0 ? "Tăng" : "Giảm";
+                const reason = String(adjustment.reason || "").trim() || "Không có lý do";
+                text.textContent = `${action} ${Math.abs(adjustment.amount).toLocaleString("vi-VN")}đ — lý do: ${reason} (${adjustment.createdAt ? formatDateTime(adjustment.createdAt) : "Không rõ thời gian"})`;
+
+                const removeButton = document.createElement("button");
+                removeButton.className = "guest-adjustment-delete";
+                removeButton.type = "button";
+                removeButton.textContent = "Xóa";
+                removeButton.setAttribute("aria-label", `Xóa ghi nhận ${action.toLowerCase()} giá`);
+                removeButton.addEventListener("click", () => deleteGuestPriceAdjustment(index));
+
+                entry.append(text, removeButton);
+                history.appendChild(entry);
+            });
+        }
+
+        async function deleteGuestPriceAdjustment(index) {
+            const room = rooms.find(r => r.id === currentActiveRoomId);
+            const adjustments = room?.guestInfo?.priceAdjustments;
+            if (!room || room.status !== "occupied" || !Array.isArray(adjustments) || !adjustments[index]) return;
+
+            const adjustment = adjustments[index];
+            const action = adjustment.amount > 0 ? "tăng" : "giảm";
+            const reason = String(adjustment.reason || "").trim() || "Không có lý do";
+            if (!await confirmAction(
+                `Xác nhận xóa ghi nhận ${action} ${Math.abs(adjustment.amount).toLocaleString("vi-VN")} VNĐ?\nLý do: ${reason}`,
+                "Xóa điều chỉnh giá",
+                true
+            )) return;
+
+            adjustments.splice(index, 1);
+            saveData();
+            updateRoomActionModal(room);
+            document.getElementById("priceAdjustmentModal").style.display = "flex";
+            renderGuestPriceAdjustmentHistory(room);
         }
 
         async function changeGuestStayType(newType) {
@@ -2127,7 +2175,7 @@
             tbody.innerHTML = "";
             invoices.forEach(inv => {
                 const tr = document.createElement("tr");
-                tr.innerHTML = `<td><b>${inv.id}</b></td><td>${inv.roomName}</td><td>${inv.guestType}</td><td>${inv.checkInTimeStr} đến ${inv.checkOutTimeStr}</td><td><b>${inv.total.toLocaleString('vi-VN')}đ</b></td><td><span class="tag-income">Đã thanh toán</span></td><td><span class="action-link action-edit" onclick="viewInvoiceDetail('${inv.id}')">Chi tiết</span></td>`;
+                tr.innerHTML = `<td><b>${inv.id}</b></td><td>${inv.roomName}</td><td>${inv.guestType}</td><td>${inv.checkInTimeStr}</td><td>${inv.checkOutTimeStr}</td><td><b>${inv.total.toLocaleString('vi-VN')}đ</b></td><td><span class="tag-income">Đã thanh toán</span></td><td><span class="action-link action-edit" onclick="viewInvoiceDetail('${inv.id}')">Chi tiết</span></td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -2215,23 +2263,27 @@
             });
 
             let totalRoom = 0, totalService = 0, totalIncome = 0, totalExpense = 0;
-            filteredInvoices.forEach(inv => { totalRoom += (inv.basePrice + (inv.surcharge || 0) + (inv.adjustmentsTotal || 0)); totalService += inv.serviceTotal; });
-            filteredTx.forEach(tx => { if(tx.type==='income') totalIncome += tx.amount; else totalExpense += tx.amount; });
+            filteredInvoices.forEach(inv => {
+                totalRoom += inv.basePrice + (inv.surcharge || 0) + (inv.adjustmentsTotal || 0);
+                totalService += inv.serviceTotal;
+                totalIncome += Number(inv.total) || 0;
+            });
+            filteredTx.forEach(tx => { if(tx.type==='income') totalIncome += Number(tx.amount) || 0; else totalExpense += Number(tx.amount) || 0; });
 
             document.getElementById("repRoomRevenue").innerText = totalRoom.toLocaleString('vi-VN') + " VNĐ";
             document.getElementById("repServiceRevenue").innerText = totalService.toLocaleString('vi-VN') + " VNĐ";
             document.getElementById("repIncomeTotal").innerText = totalIncome.toLocaleString('vi-VN') + " VNĐ";
             document.getElementById("repExpenseTotal").innerText = totalExpense.toLocaleString('vi-VN') + " VNĐ";
-            document.getElementById("repNetRevenue").innerText = (totalRoom + totalService + totalIncome - totalExpense).toLocaleString('vi-VN') + " VNĐ";
+            document.getElementById("repNetRevenue").innerText = (totalIncome - totalExpense).toLocaleString('vi-VN') + " VNĐ";
 
             const tbodyRep = document.getElementById("reportInvoicesTableBody");
             tbodyRep.innerHTML = "";
             if (filteredInvoices.length === 0) {
-                tbodyRep.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Không có hóa đơn trong khoảng thời gian này</td></tr>`;
+                tbodyRep.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted);">Không có hóa đơn trong khoảng thời gian này</td></tr>`;
             } else {
                 filteredInvoices.forEach(inv => {
                     const tr = document.createElement("tr");
-                    tr.innerHTML = `<td><b>${inv.id}</b></td><td>${inv.roomName}</td><td>${inv.guestType}</td><td>${inv.checkInTimeStr} đến ${inv.checkOutTimeStr}</td><td><b>${inv.total.toLocaleString('vi-VN')} VNĐ</b></td><td><span class="action-link action-edit" onclick="viewInvoiceDetail('${inv.id}')">Xem</span></td>`;
+                    tr.innerHTML = `<td><b>${inv.id}</b></td><td>${inv.roomName}</td><td>${inv.guestType}</td><td>${inv.checkInTimeStr}</td><td>${inv.checkOutTimeStr}</td><td><b>${inv.total.toLocaleString('vi-VN')} VNĐ</b></td><td><span class="action-link action-edit" onclick="viewInvoiceDetail('${inv.id}')">Xem</span></td>`;
                     tbodyRep.appendChild(tr);
                 });
             }

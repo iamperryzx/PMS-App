@@ -6,6 +6,7 @@
   "scripts": {
     "start": "electron .",
     "dist:win": "electron-builder --win nsis portable --publish never",
+    "dist:win:installer": "electron-builder --win nsis --publish never",
     "release:win": "node scripts/prepare-release.cjs && npm run dist:win"
   },
   "dependencies": {

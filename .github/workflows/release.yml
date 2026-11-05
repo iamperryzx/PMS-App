@@ -25,6 +25,9 @@ concurrency:
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      ELECTRON_CACHE: ${{ github.workspace }}\.cache\electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}\.cache\electron-builder
     steps:
       - name: Check out source
         uses: actions/checkout@v5
@@ -39,6 +42,16 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Cache Electron build tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache/electron
+            .cache/electron-builder
+          key: windows-electron-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            windows-electron-
 
       - name: Prepare next version
         run: node scripts/prepare-release.cjs
@@ -58,7 +71,7 @@ jobs:
           git push origin $tag
 
       - name: Build Windows installer
-        run: npm run dist:win
+        run: npm run dist:win:installer
 
       - name: Publish GitHub release
         shell: pwsh

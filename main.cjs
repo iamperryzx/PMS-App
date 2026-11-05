@@ -11,6 +11,17 @@ function sendUpdateStatus(status) {
   }
 }
 
+function formatReleaseNotes(releaseNotes) {
+  if (typeof releaseNotes === "string") return releaseNotes;
+  if (Array.isArray(releaseNotes)) {
+    return releaseNotes
+      .map(note => typeof note === "string" ? note : note?.note)
+      .filter(note => typeof note === "string" && note.trim())
+      .join("\n");
+  }
+  return "";
+}
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "pms",
@@ -36,7 +47,7 @@ if (!gotSingleInstanceLock) {
   autoUpdater.on("update-available", info => sendUpdateStatus({
     type: "available",
     version: info.version,
-    releaseNotes: typeof info.releaseNotes === "string" ? info.releaseNotes : ""
+    releaseNotes: formatReleaseNotes(info.releaseNotes)
   }));
   autoUpdater.on("update-not-available", info => sendUpdateStatus({
     type: "not-available",

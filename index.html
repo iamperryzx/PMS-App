@@ -2279,6 +2279,44 @@
             document.getElementById("updateDialog").style.display = "none";
         }
 
+        function formatUpdateNotes(rawNotes, version) {
+            const releaseHighlights = {
+                "1.0.5": [
+                    "Thêm popup Tăng/Giảm giá phòng; bắt buộc ghi lý do và lưu lịch sử điều chỉnh.",
+                    "Thêm ghi chú khách lưu trú và lưu ghi chú vào hóa đơn.",
+                    "Hiển thị giờ vào, giờ ra hiện tại và tổng thời gian khách đã ở; cập nhật ngay khi đổi danh mục phòng.",
+                    "Đưa thời gian vào/ra lên đầu chi tiết hóa đơn.",
+                    "Loại bỏ chữ Minibar khỏi giao diện."
+                ]
+            };
+            const knownNotes = releaseHighlights[String(version)];
+            if (knownNotes) return knownNotes.map(note => `• ${note}`).join("\n");
+
+            if (typeof rawNotes !== "string" || !rawNotes.trim()) {
+                return "• Cải thiện và cập nhật ứng dụng.";
+            }
+
+            const template = document.createElement("template");
+            template.innerHTML = rawNotes;
+            template.content.querySelectorAll("a").forEach(link => {
+                link.replaceWith(document.createTextNode(link.textContent || ""));
+            });
+            template.content.querySelectorAll("br, li, p, h1, h2, h3").forEach(element => {
+                element.append(document.createTextNode("\n"));
+            });
+            return (template.content.textContent || "")
+                .replace(/Full Changelog\s*:?/gi, "")
+                .replace(/https?:\/\/\S+/g, "")
+                .replace(/[ \t]+\n/g, "\n")
+                .replace(/\n{2,}/g, "\n")
+                .trim()
+                .split("\n")
+                .map(line => line.trim())
+                .filter(Boolean)
+                .map(line => line.startsWith("•") || line.startsWith("-") ? line : `• ${line}`)
+                .join("\n") || "• Cải thiện và cập nhật ứng dụng.";
+        }
+
         async function runUpdateAction() {
             if (!window.pmsUpdater || !updateAction) return;
             const action = updateAction;
@@ -2321,10 +2359,13 @@
                     setUpdateDialog("Đang kiểm tra cập nhật", "Đang kết nối GitHub để kiểm tra phiên bản mới...");
                 } else if (status.type === "available") {
                     manualUpdateCheck = false;
-                    const notes = typeof status.releaseNotes === "string" && status.releaseNotes.trim()
-                        ? `\n\nNội dung: ${status.releaseNotes}`
-                        : "";
-                    setUpdateDialog(`Có phiên bản mới ${status.version}`, `Bạn có muốn tải và cài đặt bản cập nhật không?${notes}`, "Tải cập nhật", "download");
+                    const notes = formatUpdateNotes(status.releaseNotes, status.version);
+                    setUpdateDialog(
+                        `Có phiên bản mới ${status.version}`,
+                        `Nội dung cập nhật:\n${notes}\n\nBạn có muốn tải và cài đặt bản cập nhật không?`,
+                        "Tải cập nhật",
+                        "download"
+                    );
                 } else if (status.type === "not-available" && manualUpdateCheck) {
                     manualUpdateCheck = false;
                     setUpdateDialog("Đã là phiên bản mới nhất", `Bạn đang sử dụng phiên bản ${status.version}.`);

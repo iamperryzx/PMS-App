@@ -11,6 +11,7 @@ on:
       - package.json
       - package-lock.json
       - scripts/prepare-release.cjs
+      - scripts/create-release-notes.cjs
       - .github/workflows/release.yml
   workflow_dispatch:
 
@@ -27,6 +28,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -42,6 +45,9 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare Vietnamese release notes
+        run: node scripts/create-release-notes.cjs
 
       - name: Create and push release tag
         shell: pwsh
@@ -63,6 +69,6 @@ jobs:
             "release/PMS-Enterprise-Setup-$version.exe.blockmap" `
             "release/latest.yml" `
             --title "$version" `
-            --generate-notes
+            --notes-file "release-notes.md"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

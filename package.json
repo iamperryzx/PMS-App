@@ -43,8 +43,7 @@
     ],
     "nsis": {
       "artifactName": "PMS-Enterprise-Setup-${version}.${ext}",
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     }

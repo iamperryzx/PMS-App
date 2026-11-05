@@ -26,10 +26,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -51,7 +51,18 @@ jobs:
           git tag $tag
           git push origin $tag
 
-      - name: Build and publish Windows installer
-        run: npm run dist:win -- --publish always
+      - name: Build Windows installer
+        run: npm run dist:win
+
+      - name: Publish GitHub release
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          gh release create "v$version" `
+            "release/PMS-Enterprise-Setup-$version.exe" `
+            "release/PMS-Enterprise-Setup-$version.exe.blockmap" `
+            "release/latest.yml" `
+            --title "$version" `
+            --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -4,6 +4,16 @@ const path = require("node:path");
 const { autoUpdater } = require("electron-updater");
 
 let mainWindow;
+let updateCheckPromise = null;
+
+function checkForUpdates() {
+  if (!updateCheckPromise) {
+    updateCheckPromise = autoUpdater.checkForUpdates().finally(() => {
+      updateCheckPromise = null;
+    });
+  }
+  return updateCheckPromise;
+}
 
 function sendUpdateStatus(status) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -70,7 +80,7 @@ if (!gotSingleInstanceLock) {
     ipcMain.handle("updates:check", async () => {
       if (!app.isPackaged) return { development: true };
       try {
-        await autoUpdater.checkForUpdates();
+        await checkForUpdates();
         return { started: true };
       } catch (error) {
         console.error("Could not check for PMS updates:", error);
@@ -140,13 +150,13 @@ if (!gotSingleInstanceLock) {
       await mainWindow.loadURL("pms://app/index.html");
       if (app.isPackaged) {
         const startupCheck = setTimeout(() => {
-          autoUpdater.checkForUpdates().catch(error => {
+          checkForUpdates().catch(error => {
             console.error("Automatic PMS update check failed:", error);
           });
         }, 12000);
         startupCheck.unref();
         const periodicCheck = setInterval(() => {
-          autoUpdater.checkForUpdates().catch(error => {
+          checkForUpdates().catch(error => {
             console.error("Periodic PMS update check failed:", error);
           });
         }, 4 * 60 * 60 * 1000);

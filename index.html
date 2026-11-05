@@ -86,13 +86,31 @@
         .branch-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 16px; }
         .branch-add { background: #10b981; }
         .branch-add:hover { background: #059669; }
+        .settings-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .settings-tab { padding: 9px 14px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--text-muted); font-weight: 700; cursor: pointer; transition: background .2s, color .2s, border-color .2s, transform .2s; }
+        .settings-tab:hover { transform: translateY(-1px); background: #f3f0e9; color: var(--text-main); }
+        .settings-tab.active { border-color: #e4dac3; background: #f3f0e9; color: var(--primary); }
+        .settings-panel { display: none; animation: panel-enter .28s ease both; }
+        .settings-panel.active { display: block; }
+        .settings-intro { margin-bottom: 18px; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+        .hotel-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+        .hotel-settings-grid .form-group { margin-bottom: 14px; }
+        .hotel-settings-wide { grid-column: 1 / -1; }
+        .hotel-logo-field { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 14px; border: 1px dashed #d9cfbb; border-radius: 12px; background: #faf8f3; }
+        .hotel-logo-preview { width: 104px; height: 84px; display: grid; place-items: center; overflow: hidden; border: 1px solid #e5dfd3; border-radius: 10px; background: #fffefa; color: #8a96a5; }
+        .hotel-logo-preview img { width: 100%; height: 100%; object-fit: contain; }
+        .hotel-logo-help { flex: 1; min-width: 180px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+        .hotel-settings-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
         .update-check-button { margin-top: 12px; padding: 8px 12px; border: 1px solid #e5dfd3; border-radius: 8px; background: #f7f5ef; color: #536174; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease; }
         .update-check-button:hover { transform: translateY(-1px); border-color: #c6ad78; background: #f1ecdf; }
         .update-progress-track { height: 8px; margin-top: 14px; overflow: hidden; border-radius: 99px; background: #eee9df; }
         .update-progress-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#b28b4d,#d9c18e); transition: width 0.2s ease; }
+        .update-progress-label { margin-top: 7px; color: var(--text-muted); font-size: 11px; text-align: right; }
         @media (max-width: 600px) {
             .login-card, .branch-card { padding: 26px; }
             .branch-item { flex-wrap: wrap; }
+            .hotel-settings-grid { grid-template-columns: 1fr; }
+            .hotel-settings-wide { grid-column: auto; }
             .branch-actions { flex: 1 1 100%; justify-content: flex-end; }
             .branch-enter { flex: 1; }
             .branch-footer { align-items: stretch; flex-direction: column-reverse; }
@@ -394,6 +412,30 @@
         .branch-add { background: linear-gradient(135deg,#648775,#397861); }
         .branch-add:hover { background: #326c56; }
         .branch-footer { border-top-color: #e6e0d4; }
+        @keyframes ambient-drift { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(18px, -12px, 0) scale(1.04); } }
+        @keyframes panel-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes card-enter { from { opacity: 0; transform: translateY(12px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes soft-glow { 0%, 100% { box-shadow: 0 8px 24px rgba(38,45,54,.045), 0 1px 2px rgba(38,45,54,.035); } 50% { box-shadow: 0 12px 30px rgba(38,45,54,.075), 0 0 0 1px rgba(198,168,106,.08); } }
+        .login-wrapper::before { animation: ambient-drift 13s ease-in-out infinite; }
+        .login-wrapper::after { animation: ambient-drift 16s ease-in-out infinite reverse; }
+        .branch-card { animation: login-card-in .55s ease both; }
+        .branch-item { animation: panel-enter .38s ease both; }
+        .branch-item:nth-child(2) { animation-delay: .05s; }
+        .branch-item:nth-child(3) { animation-delay: .1s; }
+        .app-container { animation: panel-enter .45s ease both; }
+        .dashboard-header { animation: panel-enter .4s ease both; }
+        .card-panel, .toolbar { transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
+        .tab-btn { position: relative; transition: color .2s ease, background .2s ease, transform .2s ease; }
+        .tab-btn:hover { transform: translateY(-1px); }
+        .tab-btn.active { box-shadow: inset 0 -2px 0 #b28b4d; }
+        .section-view.active { animation: panel-enter .28s ease both; }
+        .room-card { animation: card-enter .32s ease both; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        .room-card:hover { transform: translateY(-3px); }
+        .btn-modal, .btn-logout, .branch-enter, .update-check-button { transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
+        .btn-modal:hover, .btn-logout:hover, .branch-enter:hover, .update-check-button:hover { transform: translateY(-1px); box-shadow: 0 7px 16px rgba(37,54,74,.14); }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+        }
         [style*="background: #eef2ff"], [style*="background: #f1f5f9"] { background: #f3f0e9 !important; }
         [style*="background: #ecfdf5"], [style*="background: #f0fdf4"] { background: #edf4ef !important; }
         [style*="background: #fef2f2"] { background: #f7eeee !important; }
@@ -502,7 +544,7 @@
             <button class="tab-btn owner-only" onclick="switchTab('categorySettings', this)">🏷️ Quản lý Hạng phòng & Đa khung giờ</button>
             <button class="tab-btn owner-only" onclick="switchTab('inventory', this)">📦 Quản lý kho hàng</button>
             <button class="tab-btn owner-only" onclick="switchTab('roomSettings', this)">⚙️ Danh sách Phòng</button>
-            <button class="tab-btn owner-only" onclick="switchTab('users', this)">👥 Quản lý Nhân sự</button>
+            <button class="tab-btn owner-only" onclick="switchTab('settings', this)">⚙️ Cài đặt</button>
             <button class="tab-btn" onclick="switchTab('invoices', this)">📜 Lịch sử hóa đơn</button>
             <button class="tab-btn" onclick="switchTab('reports', this)">📈 Báo cáo Doanh thu & Sổ Thu/Chi</button>
         </div>
@@ -590,16 +632,65 @@
             </div>
         </div>
 
-        <!-- PHÂN HỆ 5: NHÂN SỰ -->
-        <div id="users" class="section-view">
+        <!-- CÀI ĐẶT: CHỈ QUẢN TRỊ VIÊN -->
+        <div id="settings" class="section-view">
             <div class="card-panel">
-                <h3>👥 Quản lý tài khoản <button class="btn-modal btn-confirm" onclick="openAddUserModal()">+ Tạo tài khoản</button></h3>
-                <table class="custom-table">
-                    <thead>
-                        <tr><th>Tên đăng nhập</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th></tr>
-                    </thead>
-                    <tbody id="usersTableBody"></tbody>
-                </table>
+                <h3>⚙️ Cài đặt quản trị</h3>
+                <div class="settings-tabs" role="tablist" aria-label="Cài đặt quản trị">
+                    <button class="settings-tab active" type="button" role="tab" aria-selected="true" onclick="switchSettingsTab('settingHotel', this)">🏨 Thông tin khách sạn</button>
+                    <button class="settings-tab" type="button" role="tab" aria-selected="false" onclick="switchSettingsTab('settingUsers', this)">👥 Quản lý nhân sự</button>
+                </div>
+                <section id="settingHotel" class="settings-panel active" role="tabpanel">
+                    <p class="settings-intro">Thông tin được lưu riêng theo từng cơ sở trên thiết bị này, sẵn sàng sử dụng cho mẫu hóa đơn sau này.</p>
+                    <div class="hotel-settings-grid">
+                        <div class="form-group">
+                            <label for="hotelNameInput">Tên khách sạn / cơ sở</label>
+                            <input type="text" id="hotelNameInput" maxlength="120" placeholder="Tên hiển thị trên hóa đơn">
+                        </div>
+                        <div class="form-group">
+                            <label for="hotelHotlineInput">Số hotline</label>
+                            <input type="tel" id="hotelHotlineInput" maxlength="40" placeholder="Ví dụ: 0900 000 000">
+                        </div>
+                        <div class="form-group hotel-settings-wide">
+                            <label for="hotelAddressInput">Địa chỉ</label>
+                            <input type="text" id="hotelAddressInput" maxlength="240" placeholder="Địa chỉ khách sạn">
+                        </div>
+                        <div class="form-group">
+                            <label for="hotelBankNameInput">Ngân hàng</label>
+                            <input type="text" id="hotelBankNameInput" maxlength="100" placeholder="Tên ngân hàng">
+                        </div>
+                        <div class="form-group">
+                            <label for="hotelBankAccountInput">Số tài khoản</label>
+                            <input type="text" id="hotelBankAccountInput" maxlength="60" placeholder="Số tài khoản nhận thanh toán">
+                        </div>
+                        <div class="form-group hotel-settings-wide">
+                            <label for="hotelBankHolderInput">Chủ tài khoản</label>
+                            <input type="text" id="hotelBankHolderInput" maxlength="120" placeholder="Tên chủ tài khoản">
+                        </div>
+                        <div class="form-group hotel-settings-wide">
+                            <label>Logo khách sạn</label>
+                            <div class="hotel-logo-field">
+                                <div id="hotelLogoPreview" class="hotel-logo-preview" aria-label="Xem trước logo">Chưa có logo</div>
+                                <div class="hotel-logo-help">Chọn ảnh PNG, JPG hoặc WebP, tối đa 5 MB. Logo sẽ được thu nhỏ và lưu cùng dữ liệu của cơ sở này.</div>
+                                <input type="file" id="hotelLogoInput" accept="image/png,image/jpeg,image/webp" aria-label="Chọn logo khách sạn" onchange="handleHotelLogoUpload(event)">
+                                <button class="btn-modal btn-cancel" type="button" onclick="removeHotelLogo()">Xóa logo</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hotel-settings-actions">
+                        <button class="btn-modal btn-confirm" type="button" onclick="saveHotelSettings()">Lưu thông tin khách sạn</button>
+                    </div>
+                </section>
+                <section id="settingUsers" class="settings-panel" role="tabpanel" hidden>
+                    <p class="settings-intro">Quản lý tài khoản nhân viên được phép sử dụng hệ thống.</p>
+                    <h3>👥 Quản lý tài khoản <button class="btn-modal btn-confirm" onclick="openAddUserModal()">+ Tạo tài khoản</button></h3>
+                    <table class="custom-table">
+                        <thead>
+                            <tr><th>Tên đăng nhập</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th></tr>
+                        </thead>
+                        <tbody id="usersTableBody"></tbody>
+                    </table>
+                </section>
             </div>
         </div>
 
@@ -973,6 +1064,7 @@
             <div class="modal-header"><span id="updateDialogTitle">Cập nhật PMS</span><button class="branch-action" type="button" aria-label="Đóng" onclick="closeUpdateDialog()">✕</button></div>
             <div id="updateDialogMessage" style="color:var(--text-muted); line-height:1.6; white-space:pre-line;"></div>
             <div id="updateProgressTrack" class="update-progress-track" style="display:none;"><div id="updateProgressBar" class="update-progress-bar"></div></div>
+            <div id="updateProgressLabel" class="update-progress-label" style="display:none;"></div>
             <div class="modal-buttons">
                 <button id="updateDialogDismiss" class="btn-modal btn-cancel" type="button" onclick="closeUpdateDialog()">Để sau</button>
                 <button id="updateDialogAction" class="btn-modal btn-confirm" type="button" style="display:none;" onclick="runUpdateAction()"></button>
@@ -995,6 +1087,7 @@
         let rooms = [];
         let transactions = [];
         let invoices = [];
+        let hotelInfo = {};
         let currentActiveRoomId = null;
         let currentFilter = "Tất cả";
         let viewingInvoiceId = null;
@@ -1054,7 +1147,7 @@
          */
         function saveData() {
             if (!currentBranch) return;
-            const dataState = { rooms, inventory, invoices, transactions, categories };
+            const dataState = { rooms, inventory, invoices, transactions, categories, hotelInfo };
             localStorage.setItem(`pms_data_${currentBranch}`, JSON.stringify(dataState));
         }
 
@@ -1066,6 +1159,7 @@
             invoices = parsed.invoices || [];
             transactions = parsed.transactions || [];
             categories = parsed.categories || [];
+            hotelInfo = parsed.hotelInfo || {};
         }
 
         function persistBranches() {
@@ -1192,6 +1286,7 @@
             renderRooms();
             renderDashboardInvoices();
             renderTransactions();
+            renderHotelSettings();
         }
 
         function returnToBranches() {
@@ -1291,7 +1386,7 @@
         setInterval(updateLiveOccupancyDisplay, 1000);
 
         function switchTab(tabId, btn) {
-            if (["categorySettings", "inventory", "roomSettings", "users"].includes(tabId) && currentUser?.role !== "owner") return;
+            if (["categorySettings", "inventory", "roomSettings", "settings"].includes(tabId) && currentUser?.role !== "owner") return;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.section-view').forEach(s => s.classList.remove('active'));
             btn.classList.add('active');
@@ -1300,9 +1395,137 @@
             if (tabId === 'categorySettings') renderCategorySettingsTable();
             if (tabId === 'inventory') renderInventoryTable();
             if (tabId === 'roomSettings') renderRoomSettingsTable();
-            if (tabId === 'users') renderUsersTable();
+            if (tabId === 'settings') renderHotelSettings();
             if (tabId === 'invoices') renderInvoicesTable();
             if (tabId === 'reports') updateReports();
+        }
+
+        function switchSettingsTab(panelId, button) {
+            if (currentUser?.role !== "owner") return;
+            const tabs = button.closest(".settings-tabs");
+            const settings = button.closest("#settings");
+            tabs.querySelectorAll(".settings-tab").forEach(tab => {
+                tab.classList.remove("active");
+                tab.setAttribute("aria-selected", "false");
+            });
+            settings.querySelectorAll(".settings-panel").forEach(panel => {
+                panel.classList.remove("active");
+                panel.hidden = true;
+            });
+            button.classList.add("active");
+            button.setAttribute("aria-selected", "true");
+            const panel = document.getElementById(panelId);
+            panel.hidden = false;
+            panel.classList.add("active");
+            if (panelId === "settingUsers") renderUsersTable();
+            if (panelId === "settingHotel") renderHotelSettings();
+        }
+
+        function renderHotelSettings() {
+            const fields = {
+                hotelNameInput: hotelInfo.name || "",
+                hotelHotlineInput: hotelInfo.hotline || "",
+                hotelAddressInput: hotelInfo.address || "",
+                hotelBankNameInput: hotelInfo.bankName || "",
+                hotelBankAccountInput: hotelInfo.bankAccount || "",
+                hotelBankHolderInput: hotelInfo.bankAccountHolder || ""
+            };
+            Object.entries(fields).forEach(([id, value]) => {
+                const input = document.getElementById(id);
+                if (input) input.value = value;
+            });
+            renderHotelLogoPreview();
+        }
+
+        function renderHotelLogoPreview() {
+            const preview = document.getElementById("hotelLogoPreview");
+            if (!preview) return;
+            preview.replaceChildren();
+            if (hotelInfo.logoDataUrl) {
+                const image = document.createElement("img");
+                image.src = hotelInfo.logoDataUrl;
+                image.alt = "Logo khách sạn";
+                preview.appendChild(image);
+            } else {
+                preview.textContent = "Chưa có logo";
+            }
+        }
+
+        async function saveHotelSettings() {
+            if (currentUser?.role !== "owner" || !currentBranch) return;
+            hotelInfo = {
+                ...hotelInfo,
+                name: document.getElementById("hotelNameInput").value.trim(),
+                hotline: document.getElementById("hotelHotlineInput").value.trim(),
+                address: document.getElementById("hotelAddressInput").value.trim(),
+                bankName: document.getElementById("hotelBankNameInput").value.trim(),
+                bankAccount: document.getElementById("hotelBankAccountInput").value.trim(),
+                bankAccountHolder: document.getElementById("hotelBankHolderInput").value.trim()
+            };
+            saveData();
+            await showNotice("Đã lưu thông tin khách sạn cho cơ sở này.");
+        }
+
+        async function handleHotelLogoUpload(event) {
+            if (currentUser?.role !== "owner" || !currentBranch) return;
+            const input = event.target;
+            const file = input.files?.[0];
+            if (!file) return;
+            if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+                input.value = "";
+                await showNotice("Vui lòng chọn ảnh PNG, JPG hoặc WebP.");
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                input.value = "";
+                await showNotice("Ảnh logo phải nhỏ hơn 5 MB.");
+                return;
+            }
+            try {
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onerror = () => reject(new Error("Không đọc được tệp ảnh."));
+                    reader.onload = () => {
+                        const image = new Image();
+                        image.onerror = () => reject(new Error("Tệp đã chọn không phải ảnh hợp lệ."));
+                        image.onload = () => {
+                            const scale = Math.min(1, 512 / Math.max(image.naturalWidth, image.naturalHeight));
+                            const canvas = document.createElement("canvas");
+                            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+                            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                            const context = canvas.getContext("2d");
+                            if (!context) {
+                                reject(new Error("Không thể xử lý ảnh trên thiết bị này."));
+                                return;
+                            }
+                            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                            resolve(canvas.toDataURL("image/webp", 0.82));
+                        };
+                        image.src = reader.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+                if (dataUrl.length > 500_000) {
+                    await showNotice("Ảnh logo sau khi xử lý vẫn quá lớn. Vui lòng chọn ảnh khác.");
+                    return;
+                }
+                hotelInfo = { ...hotelInfo, logoDataUrl: dataUrl };
+                saveData();
+                renderHotelLogoPreview();
+            } catch (error) {
+                await showNotice(`Không thể lưu logo: ${error.message}`);
+            } finally {
+                input.value = "";
+            }
+        }
+
+        async function removeHotelLogo() {
+            if (currentUser?.role !== "owner" || !currentBranch || !hotelInfo.logoDataUrl) return;
+            if (!await confirmAction("Xóa logo của cơ sở này?", "Xóa logo khách sạn", true)) return;
+            const { logoDataUrl, ...hotelDetails } = hotelInfo;
+            hotelInfo = hotelDetails;
+            saveData();
+            renderHotelLogoPreview();
         }
 
         function switchSubTab(subTabId, btn) {
@@ -1384,11 +1607,19 @@
             renderRooms(catName);
         }
 
+        function sortRoomsByNumber(roomList) {
+            return [...roomList].sort((a, b) =>
+                String(a.name).localeCompare(String(b.name), "vi", { numeric: true, sensitivity: "base" }) ||
+                String(a.name).localeCompare(String(b.name), "vi", { sensitivity: "base" }) ||
+                String(a.id).localeCompare(String(b.id), "vi", { numeric: true })
+            );
+        }
+
         function renderRooms(filterCat = currentFilter) {
             currentFilter = filterCat;
             const grid = document.getElementById("roomGrid");
             grid.innerHTML = "";
-            const filtered = filterCat === "Tất cả" ? rooms : rooms.filter(r => r.category === filterCat);
+            const filtered = sortRoomsByNumber(filterCat === "Tất cả" ? rooms : rooms.filter(r => r.category === filterCat));
             
             filtered.forEach(room => {
                 const card = document.createElement("div");
@@ -1899,7 +2130,7 @@
         function renderRoomSettingsTable() {
             const tbody = document.getElementById("roomSettingsTableBody");
             tbody.innerHTML = "";
-            rooms.forEach(r => {
+            sortRoomsByNumber(rooms).forEach(r => {
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
                     <td><b>${r.name}</b></td>
@@ -2322,13 +2553,48 @@
             document.getElementById("updateDialogDismiss").style.display = action === "install" ? "none" : "inline-block";
             updateAction = action;
             const progressTrack = document.getElementById("updateProgressTrack");
+            const progressLabel = document.getElementById("updateProgressLabel");
             progressTrack.style.display = progress === null ? "none" : "block";
-            if (progress !== null) document.getElementById("updateProgressBar").style.width = `${Math.max(0, Math.min(100, progress))}%`;
+            progressLabel.style.display = progress === null ? "none" : "block";
+            if (progress !== null) {
+                const percent = Math.max(0, Math.min(100, progress));
+                document.getElementById("updateProgressBar").style.width = `${percent}%`;
+                progressLabel.innerText = `${percent}%`;
+            }
             document.getElementById("updateDialog").style.display = "flex";
+        }
+
+        let updateCheckProgressTimer = null;
+        let updateCheckProgress = 0;
+
+        function stopUpdateCheckProgress() {
+            if (updateCheckProgressTimer) clearInterval(updateCheckProgressTimer);
+            updateCheckProgressTimer = null;
+        }
+
+        function startUpdateCheckProgress() {
+            if (updateCheckProgressTimer) return;
+            stopUpdateCheckProgress();
+            updateCheckProgress = 3;
+            const updateProgress = () => {
+                updateCheckProgress = Math.min(94, updateCheckProgress + Math.max(0.7, (94 - updateCheckProgress) * 0.045));
+                const percent = Math.floor(updateCheckProgress);
+                setUpdateDialog(
+                    "Đang kiểm tra cập nhật",
+                    `Đang kết nối GitHub để kiểm tra phiên bản mới... (${percent}%, ước tính)`,
+                    "",
+                    null,
+                    percent
+                );
+            };
+            updateProgress();
+            updateCheckProgressTimer = setInterval(updateProgress, 350);
         }
 
         function closeUpdateDialog() {
             document.getElementById("updateDialog").style.display = "none";
+            stopUpdateCheckProgress();
+            manualUpdateCheck = false;
         }
 
         function formatUpdateNotes(rawNotes, version) {
@@ -2383,15 +2649,18 @@
 
         async function checkForApplicationUpdates() {
             if (!window.pmsUpdater) return;
+            if (manualUpdateCheck) return;
             manualUpdateCheck = true;
-            setUpdateDialog("Đang kiểm tra cập nhật", "Đang kết nối GitHub để kiểm tra phiên bản mới...");
+            startUpdateCheckProgress();
             try {
                 const result = await window.pmsUpdater.check();
                 if (result?.development) {
                     manualUpdateCheck = false;
+                    stopUpdateCheckProgress();
                     setUpdateDialog("Kiểm tra cập nhật", "Tính năng cập nhật hoạt động trong bản EXE đã cài đặt.");
                 } else if (result?.error && manualUpdateCheck) {
                     manualUpdateCheck = false;
+                    stopUpdateCheckProgress();
                     const message = /404|not found/i.test(result.error)
                         ? "Chưa tìm thấy bản phát hành trên GitHub. Hãy tạo GitHub Release có bộ cài Windows để bật cập nhật."
                         : `Không thể kiểm tra cập nhật: ${result.error}`;
@@ -2400,6 +2669,7 @@
             } catch (error) {
                 if (!manualUpdateCheck) return;
                 manualUpdateCheck = false;
+                stopUpdateCheckProgress();
                 setUpdateDialog("Chưa kiểm tra được", `Không thể kết nối để kiểm tra cập nhật: ${error.message}`);
             }
         }
@@ -2408,9 +2678,10 @@
             document.getElementById("checkForUpdatesButton").style.display = "inline-block";
             window.pmsUpdater.onStatus(status => {
                 if (status.type === "checking" && manualUpdateCheck) {
-                    setUpdateDialog("Đang kiểm tra cập nhật", "Đang kết nối GitHub để kiểm tra phiên bản mới...");
+                    startUpdateCheckProgress();
                 } else if (status.type === "available") {
                     manualUpdateCheck = false;
+                    stopUpdateCheckProgress();
                     const notes = formatUpdateNotes(status.releaseNotes, status.version);
                     setUpdateDialog(
                         `Có phiên bản mới ${status.version}`,
@@ -2420,13 +2691,17 @@
                     );
                 } else if (status.type === "not-available" && manualUpdateCheck) {
                     manualUpdateCheck = false;
+                    stopUpdateCheckProgress();
                     setUpdateDialog("Đã là phiên bản mới nhất", `Bạn đang sử dụng phiên bản ${status.version}.`);
                 } else if (status.type === "progress") {
-                    setUpdateDialog("Đang tải cập nhật", `Đã tải ${status.percent}% . Vui lòng giữ ứng dụng mở.`, "", null, status.percent);
+                    stopUpdateCheckProgress();
+                    setUpdateDialog("Đang tải cập nhật", `Đã tải ${status.percent}%. Vui lòng giữ ứng dụng mở.`, "", null, status.percent);
                 } else if (status.type === "downloaded") {
+                    stopUpdateCheckProgress();
                     setUpdateDialog("Đã tải xong", `Phiên bản ${status.version} đã sẵn sàng. Khởi động lại ứng dụng để cài đặt.`, "Khởi động lại và cài", "install");
                 } else if (status.type === "error" && manualUpdateCheck) {
                     manualUpdateCheck = false;
+                    stopUpdateCheckProgress();
                     const message = /404|not found/i.test(status.message)
                         ? "Chưa tìm thấy bản phát hành trên GitHub. Hãy tạo GitHub Release có bộ cài Windows để bật cập nhật."
                         : `Không thể kiểm tra cập nhật: ${status.message}`;

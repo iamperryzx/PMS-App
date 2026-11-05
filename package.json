@@ -1,0 +1,56 @@
+{
+  "name": "pms-enterprise",
+  "version": "1.0.3",
+  "description": "Ứng dụng quản lý khách sạn PMS Enterprise",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis portable",
+    "release:win": "node scripts/prepare-release.cjs && npm run dist:win"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "vn.pms.enterprise",
+    "productName": "PMS Enterprise",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "index.html",
+      "main.cjs",
+      "preload.cjs",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "iamperryzx",
+        "repo": "PMS-App",
+        "releaseType": "release"
+      }
+    ],
+    "nsis": {
+      "artifactName": "PMS-Enterprise-Setup-${version}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "allowScripts": {
+    "electron@37.10.3": true,
+    "electron-winstaller@5.4.0": true
+  }
+}

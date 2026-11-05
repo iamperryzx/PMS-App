@@ -140,6 +140,7 @@ if (!gotSingleInstanceLock) {
         preload: path.join(__dirname, "preload.cjs")
       }
     });
+    mainWindow.removeMenu();
 
     mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     mainWindow.webContents.on("will-navigate", (event, url) => {

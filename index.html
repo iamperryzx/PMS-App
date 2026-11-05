@@ -451,6 +451,34 @@
             .custom-table { min-width: 560px; }
             .service-inputs { flex-wrap: wrap; }
         }
+
+        #invoicePrintArea { display: none; }
+        @media print {
+            @page { margin: 18mm; }
+            body > *:not(#invoicePrintArea) { display: none !important; }
+            #invoicePrintArea {
+                display: block !important;
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                color: #172033;
+                background: #fff;
+                font: 13px/1.5 Arial, sans-serif;
+            }
+            .invoice-print { max-width: 760px; margin: 0 auto; }
+            .invoice-print-header { text-align: center; padding-bottom: 16px; border-bottom: 2px solid #25364a; }
+            .invoice-print-logo { max-width: 120px; max-height: 72px; object-fit: contain; margin-bottom: 8px; }
+            .invoice-print-header h1 { margin: 0 0 4px; font-size: 21px; }
+            .invoice-print-header p { margin: 2px 0; color: #475569; }
+            .invoice-print-title { margin: 18px 0 12px; text-align: center; font-size: 19px; }
+            .invoice-print-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 20px; margin-bottom: 14px; }
+            .invoice-print table { width: 100%; border-collapse: collapse; }
+            .invoice-print th, .invoice-print td { padding: 7px 6px; border-bottom: 1px solid #d9dee7; text-align: left; }
+            .invoice-print th:last-child, .invoice-print td:last-child { text-align: right; white-space: nowrap; }
+            .invoice-print-total { margin-top: 12px; text-align: right; font-size: 17px; font-weight: 700; }
+            .invoice-print-note, .invoice-print-bank { margin-top: 15px; }
+            .invoice-print-footer { margin-top: 30px; text-align: center; font-style: italic; }
+        }
     </style>
 </head>
 <body>
@@ -641,7 +669,7 @@
                     <button class="settings-tab" type="button" role="tab" aria-selected="false" onclick="switchSettingsTab('settingUsers', this)">👥 Quản lý nhân sự</button>
                 </div>
                 <section id="settingHotel" class="settings-panel active" role="tabpanel">
-                    <p class="settings-intro">Thông tin được lưu riêng theo từng cơ sở trên thiết bị này, sẵn sàng sử dụng cho mẫu hóa đơn sau này.</p>
+                    <p class="settings-intro">Thông tin được lưu riêng theo từng cơ sở trên thiết bị này và sẽ hiển thị trên hóa đơn in.</p>
                     <div class="hotel-settings-grid">
                         <div class="form-group">
                             <label for="hotelNameInput">Tên khách sạn / cơ sở</label>
@@ -1040,7 +1068,7 @@
 
             <div class="modal-buttons">
                 <button class="btn-modal btn-cancel" onclick="closeModal('invoiceDetailModal')">Đóng</button>
-                <button class="btn-modal btn-confirm" onclick="window.print()">🖨️ In lại hóa đơn</button>
+                <button class="btn-modal btn-confirm" onclick="printInvoice()">🖨️ In lại hóa đơn</button>
             </div>
         </div>
     </div>
@@ -1316,6 +1344,15 @@
             return String(value ?? "").replace(/[&<>"']/g, character => ({
                 "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
             })[character]);
+        }
+
+        function getNextInvoiceId() {
+            const highestNumber = invoices.reduce((highest, invoice) => {
+                const match = /^HD(\d+)$/i.exec(String(invoice.id || ""));
+                const number = match ? Number(match[1]) : 0;
+                return Number.isSafeInteger(number) ? Math.max(highest, number) : highest;
+            }, 0);
+            return `HD${String(highestNumber + 1).padStart(7, "0")}`;
         }
 
         function formatStayDuration(checkInTime, now = Date.now()) {
@@ -1981,7 +2018,7 @@
             const now = new Date();
 
             invoices.unshift({
-                id: "HD" + Math.floor(1000 + Math.random() * 9000),
+                id: getNextInvoiceId(),
                 roomName: room.name,
                 guestType: room.guestInfo.type,
                 checkInTimeStr: room.guestInfo.timeStr,
@@ -1995,6 +2032,7 @@
                 adjustmentsTotal: priceDetails.adjustmentsTotal,
                 guestNote: room.guestInfo.note || "",
                 total: priceDetails.grandTotal,
+                hotelInfoSnapshot: { ...hotelInfo },
                 status: "Đã thanh toán"
             });
 
@@ -2414,6 +2452,7 @@
         function viewInvoiceDetail(id) {
             viewingInvoiceId = id;
             const inv = invoices.find(i => i.id === id);
+            if (!inv) return;
             
             let servicesListHTML = "Không có dịch vụ phát sinh";
             if (inv.services && inv.services.length > 0) {
@@ -2452,6 +2491,86 @@
                 document.getElementById("ownerEditInvoiceBox").style.display = "none";
             }
             document.getElementById("invoiceDetailModal").style.display = "flex";
+        }
+
+        async function printInvoice() {
+            const inv = invoices.find(invoice => invoice.id === viewingInvoiceId);
+            if (!inv) {
+                await showNotice("Không tìm thấy hóa đơn cần in.");
+                return;
+            }
+
+            const printHotelInfo = inv.hotelInfoSnapshot || hotelInfo;
+            const money = amount => `${Number(amount || 0).toLocaleString("vi-VN")}đ`;
+            const hotelName = escapeHTML(printHotelInfo.name || "Khách sạn");
+            const logoDataUrl = printHotelInfo.logoDataUrl || "";
+            const logo = /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/]+=*$/i.test(logoDataUrl)
+                ? `<img class="invoice-print-logo" src="${escapeHTML(logoDataUrl)}" alt="Logo khách sạn">`
+                : "";
+            const hotelContact = [
+                printHotelInfo.address && `Địa chỉ: ${escapeHTML(printHotelInfo.address)}`,
+                printHotelInfo.hotline && `Hotline: ${escapeHTML(printHotelInfo.hotline)}`
+            ].filter(Boolean);
+            const bankDetails = [
+                printHotelInfo.bankName && `Ngân hàng: ${escapeHTML(printHotelInfo.bankName)}`,
+                printHotelInfo.bankAccount && `Số tài khoản: ${escapeHTML(printHotelInfo.bankAccount)}`,
+                printHotelInfo.bankAccountHolder && `Chủ tài khoản: ${escapeHTML(printHotelInfo.bankAccountHolder)}`
+            ].filter(Boolean);
+            const serviceRows = (inv.services || []).map(service => `
+                <tr><td>${escapeHTML(service.name)} (x${escapeHTML(service.qty)})</td><td>${money(service.total)}</td></tr>
+            `);
+            const adjustmentRows = (inv.adjustments || []).map(adjustment => `
+                <tr><td>Điều chỉnh: ${escapeHTML(adjustment.reason || "")}</td><td>${Number(adjustment.amount) < 0 ? "-" : "+"}${money(Math.abs(Number(adjustment.amount) || 0))}</td></tr>
+            `);
+            const surchargeRow = Number(inv.surcharge) > 0
+                ? `<tr><td>Phụ thu trễ giờ</td><td>${money(inv.surcharge)}</td></tr>`
+                : "";
+            const note = inv.guestNote
+                ? `<div class="invoice-print-note"><b>Ghi chú:</b> ${escapeHTML(inv.guestNote).replace(/\n/g, "<br>")}</div>`
+                : "";
+
+            let printArea = document.getElementById("invoicePrintArea");
+            if (!printArea) {
+                printArea = document.createElement("section");
+                printArea.id = "invoicePrintArea";
+                document.body.appendChild(printArea);
+            }
+            printArea.innerHTML = `
+                <article class="invoice-print">
+                    <header class="invoice-print-header">
+                        ${logo}
+                        <h1>${hotelName}</h1>
+                        ${hotelContact.map(line => `<p>${line}</p>`).join("")}
+                    </header>
+                    <h2 class="invoice-print-title">HÓA ĐƠN THANH TOÁN</h2>
+                    <div class="invoice-print-meta">
+                        <div><b>Mã hóa đơn:</b> ${escapeHTML(inv.id)}</div>
+                        <div><b>Ngày thanh toán:</b> ${escapeHTML(inv.checkOutTimeStr)}</div>
+                        <div><b>Phòng:</b> ${escapeHTML(inv.roomName)}</div>
+                        <div><b>Hình thức lưu trú:</b> ${escapeHTML(inv.guestType)}</div>
+                        <div><b>Thời gian vào:</b> ${escapeHTML(inv.checkInTimeStr)}</div>
+                        <div><b>Thời gian ra:</b> ${escapeHTML(inv.checkOutTimeStr)}</div>
+                    </div>
+                    <table>
+                        <thead><tr><th>Nội dung</th><th>Thành tiền</th></tr></thead>
+                        <tbody>
+                            <tr><td>Tiền phòng</td><td>${money(inv.basePrice)}</td></tr>
+                            ${surchargeRow}
+                            ${serviceRows.join("") || ""}
+                            ${adjustmentRows.join("") || ""}
+                        </tbody>
+                    </table>
+                    <div class="invoice-print-total">TỔNG THANH TOÁN: ${money(inv.total)}</div>
+                    ${note}
+                    ${bankDetails.length ? `<div class="invoice-print-bank"><b>Thông tin thanh toán</b><br>${bankDetails.join("<br>")}</div>` : ""}
+                    <div class="invoice-print-footer">Cảm ơn Quý khách và hẹn gặp lại!</div>
+                </article>
+            `;
+
+            window.addEventListener("afterprint", () => {
+                printArea.replaceChildren();
+            }, { once: true });
+            window.print();
         }
 
         async function ownerUpdateInvoice() {

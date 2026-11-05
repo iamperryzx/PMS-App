@@ -116,7 +116,7 @@ if (!gotSingleInstanceLock) {
         return new Response(html, {
           headers: {
             "content-type": "text/html; charset=utf-8",
-            "content-security-policy": "default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"
+            "content-security-policy": "default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://jvpxumysvrnxvytphjdg.supabase.co"
           }
         });
       } catch (error) {

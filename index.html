@@ -502,16 +502,33 @@
             <div class="login-card">
                 <div class="login-mark">🏨</div>
                 <h2>PMS ENTERPRISE</h2>
-                <p>Đăng nhập để bắt đầu phiên làm việc</p>
+                <p id="loginFormIntro">Đăng nhập để đồng bộ dữ liệu khách sạn qua Internet</p>
                 <div class="form-group">
-                    <label for="loginUsername">Tên đăng nhập</label>
-                    <input type="text" id="loginUsername" autocomplete="username">
+                    <label for="loginUsername">Email</label>
+                    <input type="email" id="loginUsername" autocomplete="username">
                 </div>
                 <div class="form-group">
                     <label for="loginPassword">Mật khẩu</label>
                     <input type="password" id="loginPassword" autocomplete="current-password">
                 </div>
-                <button class="btn-modal btn-confirm" onclick="handleLogin()">ĐĂNG NHẬP</button>
+                <button id="loginSubmitButton" class="btn-modal btn-confirm" onclick="handleLogin()">ĐĂNG NHẬP</button>
+                <button class="btn-modal btn-cancel" style="width:100%; margin-top:10px;" onclick="toggleRegistration(true)">Tạo tài khoản / nhập mã mời</button>
+                <div id="registrationFields" style="display:none; margin-top:16px;">
+                    <div class="form-group">
+                        <label for="registerFullName">Họ tên</label>
+                        <input type="text" id="registerFullName" autocomplete="name" maxlength="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Mật khẩu mới</label>
+                        <input type="password" id="registerPassword" autocomplete="new-password" minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerCode">Mã khởi tạo chủ / mã mời lễ tân</label>
+                        <input type="text" id="registerCode" autocomplete="off">
+                    </div>
+                    <button class="btn-modal btn-confirm" style="width:100%;" onclick="registerCloudAccount()">TẠO TÀI KHOẢN</button>
+                    <button class="btn-modal btn-cancel" style="width:100%; margin-top:8px;" onclick="toggleRegistration(false)">Quay lại đăng nhập</button>
+                </div>
                 <div id="loginError" style="color: var(--danger); margin-top: 12px; font-size: 13px; display: none;">Tên đăng nhập hoặc mật khẩu không chính xác!</div>
                 <div class="login-security-note">KHU VỰC ĐĂNG NHẬP ĐƯỢC BẢO VỆ</div>
             </div>
@@ -544,6 +561,7 @@
             </div>
             <div class="stats-group">
                 <div class="branch-badge">🏢 <span id="currentBranchDisplay"></span></div>
+                <div class="branch-badge">☁️ <span id="cloudSyncStatus">Đã đồng bộ</span></div>
                 <button class="btn-modal btn-cancel" onclick="returnToBranches()">Đổi cơ sở</button>
 
                 <div class="stat-card">
@@ -586,7 +604,7 @@
                         <div class="panel-sub-tabs">
                             <button class="sub-tab-btn active" onclick="switchSubTab('subInvoices', this)">📜 Hóa đơn gần đây</button>
                             <button class="sub-tab-btn" onclick="switchSubTab('subTransactions', this)">💵 Phiếu Thu / Chi</button>
-                            <button id="createTransactionButton" class="btn-modal btn-confirm" style="display:none; margin-left:auto; padding:6px 12px; font-size:12px;" onclick="openTransactionModal()">+ Lập phiếu</button>
+                            <button id="createTransactionButton" class="btn-modal btn-confirm owner-only" style="display:none; margin-left:auto; padding:6px 12px; font-size:12px;" onclick="openTransactionModal()">+ Lập phiếu</button>
                         </div>
 
                         <div id="subInvoices" class="sub-tab-content active">
@@ -1008,20 +1026,20 @@
         <div class="modal-content">
             <div class="modal-header"><span>👥 Thêm Tài Khoản Lễ Tân Mới</span><span style="cursor:pointer;" onclick="closeModal('userModal')">✕</span></div>
             <div class="form-group">
-                <label>Tên đăng nhập (Username):</label>
-                <input type="text" id="newUsername">
-            </div>
-            <div class="form-group">
-                <label>Mật khẩu:</label>
-                <input type="password" id="newPassword">
+                <label>Email đăng nhập của lễ tân:</label>
+                <input type="email" id="newUsername" autocomplete="email">
             </div>
             <div class="form-group">
                 <label>Họ và tên lễ tân:</label>
                 <input type="text" id="newFullName">
             </div>
+            <div id="staffInviteResult" style="display:none; padding:12px; background:#edf5f0; border-radius:8px; overflow-wrap:anywhere;">
+                Gửi mã mời này cho lễ tân và yêu cầu họ đăng ký bằng đúng email đã nhập:
+                <b id="staffInviteCode"></b>
+            </div>
             <div class="modal-buttons">
                 <button class="btn-modal btn-cancel" onclick="closeModal('userModal')">Hủy</button>
-                <button class="btn-modal btn-confirm" onclick="saveNewUser()">Tạo Tài Khoản</button>
+                <button id="createStaffInviteButton" class="btn-modal btn-confirm" onclick="saveNewUser()">Tạo mã mời</button>
             </div>
         </div>
     </div>
@@ -1101,13 +1119,20 @@
     </div>
 
     <script>
+        const SUPABASE_URL = "https://jvpxumysvrnxvytphjdg.supabase.co";
+        const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_bn5XAFXeD6O8DFIFeJ5Zmw_HmdEVsJg";
+        const CLOUD_SYNC_INTERVAL_MS = 2500;
         let currentBranch = null;
-        const adminAccount = { username: "admin", password: "admin123", fullName: "Quản trị viên", role: "owner", active: true };
-        const savedUsers = JSON.parse(localStorage.getItem("pms_users") || "[]");
-        let users = [adminAccount, ...savedUsers.filter(user => user.role === "staff" && user.username !== adminAccount.username)];
-        localStorage.setItem("pms_users", JSON.stringify(users));
-        let branches = JSON.parse(localStorage.getItem("pms_branches") || "null") || [];
-
+        let sessionAccessToken = null;
+        let sessionRefreshToken = null;
+        let cloudRevision = 0;
+        let cloudWriteQueue = Promise.resolve();
+        let pendingCloudWrites = 0;
+        let cloudPollInFlight = false;
+        let cloudSyncTimer = null;
+        let syncErrorVisible = false;
+        let branches = [];
+        let users = [];
         let currentUser = null;
 
         let categories = [];
@@ -1173,25 +1198,178 @@
         /**
          * ĐỒNG BỘ & LƯU TRỮ DỮ LIỆU
          */
+        function cloudErrorMessage(error) {
+            const message = String(error?.message || error || "Lỗi kết nối cloud.");
+            if (/PMS_CONFLICT/.test(message)) return "Dữ liệu vừa được thay đổi trên máy khác. Dữ liệu mới nhất đã được tải lại; vui lòng kiểm tra và thử thao tác lại.";
+            if (/Failed to fetch|NetworkError|fetch failed/i.test(message)) return "Không kết nối được cloud. Kiểm tra Internet rồi thử lại; dữ liệu chưa được xác nhận lưu.";
+            return message;
+        }
+
+        async function cloudRequest(path, { method = "GET", body, token = sessionAccessToken, retried = false } = {}) {
+            const headers = {
+                apikey: SUPABASE_PUBLISHABLE_KEY,
+                "Content-Type": "application/json"
+            };
+            if (token) headers.Authorization = `Bearer ${token}`;
+            const response = await fetch(`${SUPABASE_URL}${path}`, {
+                method,
+                headers,
+                body: body === undefined ? undefined : JSON.stringify(body)
+            });
+            const text = await response.text();
+            let result = null;
+            if (text) {
+                try {
+                    result = JSON.parse(text);
+                } catch {
+                    throw new Error(`Cloud trả về dữ liệu không hợp lệ (HTTP ${response.status}).`);
+                }
+            }
+            if (response.status === 401 && !retried && token && token === sessionAccessToken && sessionRefreshToken) {
+                const refreshed = await cloudRequest("/auth/v1/token?grant_type=refresh_token", {
+                    method: "POST",
+                    token: null,
+                    body: { refresh_token: sessionRefreshToken },
+                    retried: true
+                });
+                if (!refreshed?.access_token || !refreshed?.refresh_token) {
+                    throw new Error("Cloud không thể gia hạn phiên đăng nhập. Vui lòng đăng nhập lại.");
+                }
+                sessionAccessToken = refreshed.access_token;
+                sessionRefreshToken = refreshed.refresh_token;
+                return cloudRequest(path, { method, body, token: sessionAccessToken, retried: true });
+            }
+            if (!response.ok) {
+                throw new Error(result?.msg || result?.message || result?.error_description || result?.error || `Cloud request failed (HTTP ${response.status}).`);
+            }
+            return result;
+        }
+
+        async function cloudRpc(name, parameters = {}) {
+            return cloudRequest(`/rest/v1/rpc/${name}`, { method: "POST", body: parameters });
+        }
+
+        function setCurrentUser(profile) {
+            currentUser = {
+                username: profile.email,
+                fullName: profile.full_name,
+                role: profile.role,
+                active: true
+            };
+        }
+
+        async function refreshCloudBranches() {
+            branches = await cloudRpc("pms_list_branches") || [];
+            renderBranchList();
+        }
+
+        function applyCloudState(state) {
+            rooms = Array.isArray(state.rooms) ? state.rooms : [];
+            inventory = Array.isArray(state.inventory) ? state.inventory : [];
+            invoices = Array.isArray(state.invoices) ? state.invoices : [];
+            transactions = Array.isArray(state.transactions) ? state.transactions : [];
+            categories = Array.isArray(state.categories) ? state.categories : [];
+            hotelInfo = state.hotelInfo && typeof state.hotelInfo === "object" ? state.hotelInfo : {};
+            renderCategoryFilters();
+            renderRooms();
+            renderDashboardInvoices();
+            renderTransactions();
+            renderHotelSettings();
+            if (document.getElementById("invoices").classList.contains("active")) renderInvoicesTable();
+            if (document.getElementById("reports").classList.contains("active")) updateReports();
+        }
+
+        async function loadCloudData() {
+            const result = await cloudRpc("pms_get_branch_data", { p_branch_id: currentBranch });
+            if (!result || !Number.isSafeInteger(Number(result.revision)) || !result.state) {
+                throw new Error("Dữ liệu cơ sở trên cloud không hợp lệ.");
+            }
+            cloudRevision = Number(result.revision);
+            applyCloudState(result.state);
+        }
+
+        function reportCloudSyncError(error) {
+            const status = document.getElementById("cloudSyncStatus");
+            if (status) {
+                status.textContent = "Lỗi đồng bộ";
+                status.style.color = "var(--danger)";
+                status.title = cloudErrorMessage(error);
+            }
+            if (syncErrorVisible) return;
+            syncErrorVisible = true;
+            showNotice(`Không đồng bộ được dữ liệu: ${cloudErrorMessage(error)}`, "Lỗi đồng bộ").finally(() => {
+                syncErrorVisible = false;
+            });
+        }
+
         function saveData() {
-            if (!currentBranch) return;
-            const dataState = { rooms, inventory, invoices, transactions, categories, hotelInfo };
-            localStorage.setItem(`pms_data_${currentBranch}`, JSON.stringify(dataState));
+            if (!currentBranch || !sessionAccessToken) return Promise.resolve();
+            const branchId = currentBranch;
+            const snapshot = structuredClone({ rooms, inventory, invoices, transactions, categories, hotelInfo });
+            pendingCloudWrites += 1;
+            const status = document.getElementById("cloudSyncStatus");
+            if (status) {
+                status.textContent = "Đang đồng bộ";
+                status.style.color = "";
+                status.title = "";
+            }
+            cloudWriteQueue = cloudWriteQueue.then(async () => {
+                if (branchId !== currentBranch) return;
+                try {
+                    cloudRevision = Number(await cloudRpc("pms_save_branch_data", {
+                        p_branch_id: branchId,
+                        p_state: snapshot,
+                        p_expected_revision: cloudRevision
+                    }));
+                } catch (error) {
+                    if (/PMS_CONFLICT/.test(String(error?.message))) await loadCloudData();
+                    throw error;
+                }
+            }).catch(error => {
+                reportCloudSyncError(error);
+            }).finally(() => {
+                pendingCloudWrites = Math.max(0, pendingCloudWrites - 1);
+                if (!pendingCloudWrites && status && status.textContent === "Đang đồng bộ") {
+                    status.textContent = "Đã đồng bộ";
+                    status.style.color = "";
+                    status.title = "";
+                }
+            });
+            return cloudWriteQueue;
         }
 
-        function loadData() {
-            const localData = localStorage.getItem(`pms_data_${currentBranch}`);
-            const parsed = localData ? JSON.parse(localData) : {};
-            rooms = parsed.rooms || [];
-            inventory = parsed.inventory || [];
-            invoices = parsed.invoices || [];
-            transactions = parsed.transactions || [];
-            categories = parsed.categories || [];
-            hotelInfo = parsed.hotelInfo || {};
+        async function pollCloudData() {
+            if (!currentBranch || !sessionAccessToken || pendingCloudWrites || cloudPollInFlight) return;
+            cloudPollInFlight = true;
+            try {
+                const result = await cloudRpc("pms_get_branch_data", { p_branch_id: currentBranch });
+                if (pendingCloudWrites) return;
+                if (!result || !Number.isSafeInteger(Number(result.revision))) throw new Error("Dữ liệu phiên bản cloud không hợp lệ.");
+                if (Number(result.revision) > cloudRevision) {
+                    cloudRevision = Number(result.revision);
+                    applyCloudState(result.state);
+                }
+                const status = document.getElementById("cloudSyncStatus");
+                if (status) {
+                    status.textContent = "Đã đồng bộ";
+                    status.style.color = "";
+                    status.title = "";
+                }
+            } catch (error) {
+                reportCloudSyncError(error);
+            } finally {
+                cloudPollInFlight = false;
+            }
         }
 
-        function persistBranches() {
-            localStorage.setItem("pms_branches", JSON.stringify(branches));
+        function startCloudSync() {
+            stopCloudSync();
+            cloudSyncTimer = setInterval(pollCloudData, CLOUD_SYNC_INTERVAL_MS);
+        }
+
+        function stopCloudSync() {
+            if (cloudSyncTimer) clearInterval(cloudSyncTimer);
+            cloudSyncTimer = null;
         }
 
         function renderBranchList() {
@@ -1261,13 +1439,13 @@
                 return;
             }
             if (!await confirmAction(`Xác nhận thêm cơ sở "${name}"?`, "Thêm cơ sở")) return;
-            let id;
-            do {
-                id = `CS${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`;
-            } while (branches.some(branch => branch.id === id));
-            branches.push({ id, name });
-            persistBranches();
-            renderBranchList();
+            try {
+                const branch = await cloudRpc("pms_create_branch", { p_name: name });
+                branches.push(branch);
+                renderBranchList();
+            } catch (error) {
+                await showNotice(`Không thể tạo cơ sở: ${cloudErrorMessage(error)}`, "Lỗi cloud");
+            }
         }
 
         async function renameBranch(id) {
@@ -1282,23 +1460,30 @@
                 return;
             }
             if (!await confirmAction(`Xác nhận đổi tên cơ sở "${branch.name}" thành "${name}"?`, "Đổi tên cơ sở")) return;
-            branch.name = name;
-            persistBranches();
-            if (currentBranch === id) document.getElementById("currentBranchDisplay").innerText = name;
-            renderBranchList();
+            try {
+                await cloudRpc("pms_rename_branch", { p_branch_id: id, p_name: name });
+                branch.name = name;
+                if (currentBranch === id) document.getElementById("currentBranchDisplay").innerText = name;
+                renderBranchList();
+            } catch (error) {
+                await showNotice(`Không thể đổi tên cơ sở: ${cloudErrorMessage(error)}`, "Lỗi cloud");
+            }
         }
 
         async function deleteBranch(id) {
             if (currentUser?.role !== "owner") return;
             const branch = branches.find(item => item.id === id);
-            if (!branch || !await confirmAction(`Xóa cơ sở "${branch.name}" và toàn bộ dữ liệu lưu trên thiết bị này?`, "Xóa cơ sở", true)) return;
-            branches = branches.filter(item => item.id !== id);
-            localStorage.removeItem(`pms_data_${id}`);
-            persistBranches();
-            renderBranchList();
+            if (!branch || !await confirmAction(`Xóa cơ sở "${branch.name}" và toàn bộ dữ liệu trên cloud? Thao tác này không thể hoàn tác.`, "Xóa cơ sở", true)) return;
+            try {
+                await cloudRpc("pms_delete_branch", { p_branch_id: id });
+                branches = branches.filter(item => item.id !== id);
+                renderBranchList();
+            } catch (error) {
+                await showNotice(`Không thể xóa cơ sở: ${cloudErrorMessage(error)}`, "Lỗi cloud");
+            }
         }
 
-        function selectBranch(id) {
+        async function selectBranch(id) {
             if (!branches.some(branch => branch.id === id)) return;
             currentBranch = id;
             currentFilter = "Tất cả";
@@ -1309,16 +1494,20 @@
             document.querySelectorAll(".section-view").forEach(section => section.classList.remove("active"));
             document.querySelector(".nav-tabs .tab-btn").classList.add("active");
             document.getElementById("roomMap").classList.add("active");
-            loadData();
-            renderCategoryFilters();
-            renderRooms();
-            renderDashboardInvoices();
-            renderTransactions();
-            renderHotelSettings();
+            try {
+                await loadCloudData();
+                startCloudSync();
+            } catch (error) {
+                currentBranch = null;
+                document.getElementById("appContainer").style.display = "none";
+                document.getElementById("branchScreen").style.display = "flex";
+                await showNotice(`Không thể tải dữ liệu cơ sở: ${cloudErrorMessage(error)}`, "Lỗi cloud");
+            }
         }
 
-        function returnToBranches() {
-            saveData();
+        async function returnToBranches() {
+            await saveData();
+            stopCloudSync();
             document.getElementById("appContainer").style.display = "none";
             document.getElementById("branchScreen").style.display = "flex";
             renderBranchList();
@@ -1384,40 +1573,147 @@
         }
 
         /* ĐĂNG NHẬP */
-        function handleLogin() {
-            const u = document.getElementById("loginUsername").value.trim();
-            const p = document.getElementById("loginPassword").value.trim();
-            const found = users.find(usr => usr.username === u && usr.password === p && usr.active);
+        function toggleRegistration(show) {
+            document.getElementById("registrationFields").style.display = show ? "block" : "none";
+            document.getElementById("loginSubmitButton").style.display = show ? "none" : "block";
+            document.getElementById("loginFormIntro").innerText = show
+                ? "Nhập email, mật khẩu và mã khởi tạo/mã mời được cấp."
+                : "Đăng nhập để đồng bộ dữ liệu khách sạn qua Internet";
+            document.getElementById("loginError").style.display = "none";
+        }
 
-            if (found) {
-                currentUser = found;
-                document.getElementById("loginScreen").style.display = "none";
-                document.getElementById("branchScreen").style.display = "flex";
-                document.getElementById("currentUserDisplay").innerText = currentUser.fullName;
-                document.getElementById("currentRoleDisplay").innerText = currentUser.role === 'owner' ? 'Quản trị' : 'Lễ tân';
+        function finishLogin(profile) {
+            setCurrentUser(profile);
+            document.getElementById("loginScreen").style.display = "none";
+            document.getElementById("branchScreen").style.display = "flex";
+            document.getElementById("currentUserDisplay").innerText = currentUser.fullName;
+            document.getElementById("currentRoleDisplay").innerText = currentUser.role === "owner" ? "Quản trị" : "Lễ tân";
+            document.querySelectorAll(".owner-only").forEach(element => {
+                element.style.display = currentUser.role === "owner" ? "inline-block" : "none";
+            });
+        }
 
-                const ownerElements = document.querySelectorAll('.owner-only');
-                ownerElements.forEach(el => el.style.display = currentUser.role === 'owner' ? 'inline-block' : 'none');
-                document.getElementById("loginError").style.display = "none";
-                renderBranchList();
+        async function completePendingMembership(code, fullName = "") {
+            const trimmedCode = code.trim();
+            if (!trimmedCode) throw new Error("Vui lòng nhập mã khởi tạo hoặc mã mời.");
+            if (trimmedCode.startsWith("OWNER-")) {
+                if (!fullName.trim()) throw new Error("Vui lòng nhập họ tên quản trị viên.");
+                await cloudRpc("pms_claim_owner", { p_code: trimmedCode, p_full_name: fullName.trim() });
             } else {
-                document.getElementById("loginError").style.display = "block";
+                await cloudRpc("pms_accept_staff_invite", { p_code: trimmedCode });
+            }
+            sessionStorage.removeItem("pms_pending_membership_code");
+            sessionStorage.removeItem("pms_pending_membership_name");
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById("loginUsername").value.trim().toLowerCase();
+            const password = document.getElementById("loginPassword").value;
+            const errorElement = document.getElementById("loginError");
+            errorElement.style.display = "none";
+            if (!email || !password) {
+                errorElement.innerText = "Vui lòng nhập email và mật khẩu.";
+                errorElement.style.display = "block";
+                return;
+            }
+
+            try {
+                const session = await cloudRequest("/auth/v1/token?grant_type=password", {
+                    method: "POST",
+                    token: null,
+                    body: { email, password }
+                });
+                if (!session?.access_token) throw new Error("Đăng nhập thành công nhưng không nhận được phiên xác thực.");
+                sessionAccessToken = session.access_token;
+                sessionRefreshToken = session.refresh_token || null;
+                const pendingCode = sessionStorage.getItem("pms_pending_membership_code");
+                if (pendingCode) {
+                    await completePendingMembership(pendingCode, sessionStorage.getItem("pms_pending_membership_name") || "");
+                }
+                const profile = await cloudRpc("pms_get_account");
+                setCurrentUser(profile);
+                await refreshCloudBranches();
+                finishLogin(profile);
+            } catch (error) {
+                sessionAccessToken = null;
+                sessionRefreshToken = null;
+                errorElement.innerText = `Không đăng nhập được: ${cloudErrorMessage(error)}`;
+                errorElement.style.display = "block";
             }
         }
 
-        function handleLogout() {
-            saveData();
+        async function registerCloudAccount() {
+            const email = document.getElementById("loginUsername").value.trim().toLowerCase();
+            const password = document.getElementById("registerPassword").value;
+            const fullName = document.getElementById("registerFullName").value.trim();
+            const code = document.getElementById("registerCode").value.trim();
+            const errorElement = document.getElementById("loginError");
+            errorElement.style.display = "none";
+            if (!email || !email.includes("@") || password.length < 8 || !fullName || !code) {
+                errorElement.innerText = "Nhập email hợp lệ, họ tên, mật khẩu ít nhất 8 ký tự và mã khởi tạo/mã mời.";
+                errorElement.style.display = "block";
+                return;
+            }
+
+            try {
+                const result = await cloudRequest("/auth/v1/signup", {
+                    method: "POST",
+                    token: null,
+                    body: { email, password, data: { full_name: fullName } }
+                });
+                if (!result?.access_token) {
+                    sessionStorage.setItem("pms_pending_membership_code", code);
+                    sessionStorage.setItem("pms_pending_membership_name", fullName);
+                    errorElement.innerText = "Tài khoản đã tạo. Xác nhận email, sau đó đăng nhập trên cùng máy để hoàn tất kích hoạt. Nếu chưa cấu hình email, chủ project hãy tắt Confirm email trong Supabase Authentication.";
+                    errorElement.style.display = "block";
+                    return;
+                }
+                sessionAccessToken = result.access_token;
+                sessionRefreshToken = result.refresh_token || null;
+                await completePendingMembership(code, fullName);
+                const profile = await cloudRpc("pms_get_account");
+                setCurrentUser(profile);
+                await refreshCloudBranches();
+                finishLogin(profile);
+            } catch (error) {
+                sessionAccessToken = null;
+                sessionRefreshToken = null;
+                errorElement.innerText = `Không tạo/kích hoạt được tài khoản: ${cloudErrorMessage(error)}`;
+                errorElement.style.display = "block";
+            }
+        }
+
+        async function handleLogout() {
+            stopCloudSync();
+            if (currentBranch) await saveData();
+            try {
+                if (sessionAccessToken) {
+                    await cloudRequest("/auth/v1/logout", { method: "POST", body: {} });
+                }
+            } catch (error) {
+                await showNotice(`Không thể kết thúc phiên cloud: ${cloudErrorMessage(error)}`, "Lỗi đăng xuất");
+            }
+            sessionAccessToken = null;
+            sessionRefreshToken = null;
             currentUser = null;
             currentBranch = null;
+            branches = [];
             document.getElementById("appContainer").style.display = "none";
             document.getElementById("branchScreen").style.display = "none";
             document.getElementById("loginScreen").style.display = "flex";
             document.getElementById("loginUsername").value = "";
             document.getElementById("loginPassword").value = "";
+            document.getElementById("registerPassword").value = "";
+            document.getElementById("registerFullName").value = "";
+            document.getElementById("registerCode").value = "";
+            toggleRegistration(false);
         }
 
         document.getElementById("loginPassword").addEventListener("keydown", event => {
-            if (event.key === "Enter") handleLogin();
+            if (event.key === "Enter") {
+                if (document.getElementById("registrationFields").style.display !== "none") registerCloudAccount();
+                else handleLogin();
+            }
         });
         updateLiveOccupancyDisplay();
         setInterval(updateLiveOccupancyDisplay, 1000);
@@ -1571,7 +1867,8 @@
             panel.querySelectorAll('.sub-tab-content').forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById(subTabId).classList.add('active');
-            document.getElementById("createTransactionButton").style.display = subTabId === "subTransactions" ? "inline-block" : "none";
+            document.getElementById("createTransactionButton").style.display =
+                subTabId === "subTransactions" && currentUser?.role === "owner" ? "inline-block" : "none";
         }
 
         function updateStats() {
@@ -2323,56 +2620,92 @@
         }
 
         /* NHÂN SỰ */
-        function renderUsersTable() {
+        async function renderUsersTable() {
+            if (currentUser?.role !== "owner" || !currentBranch) return;
             const tbody = document.getElementById("usersTableBody");
             tbody.innerHTML = "";
-            users.forEach(u => {
+            try {
+                users = await cloudRpc("pms_list_staff", { p_branch_id: currentBranch }) || [];
+            } catch (error) {
+                await showNotice(`Không tải được danh sách nhân sự: ${cloudErrorMessage(error)}`, "Lỗi cloud");
+                return;
+            }
+            const staffList = [{ email: currentUser.username, fullName: currentUser.fullName, role: "owner", active: true }, ...users];
+            staffList.forEach(user => {
                 const tr = document.createElement("tr");
-                const roleBadge = u.role === 'owner' ? '👑 Chủ Khách Sạn' : '👤 Lễ Tân';
-                const statusBadge = u.active ? '<span style="color:var(--success);">Hoạt động</span>' : '<span style="color:var(--danger);">Đã khóa</span>';
-                const actionBtn = u.role === 'staff' 
-                    ? `<span class="action-link action-del" onclick="toggleUserStatus('${u.username}')">${u.active ? 'Khóa' : 'Mở khóa'}</span>` 
-                    : '---';
-                tr.innerHTML = `<td><b>${u.username}</b></td><td>${u.fullName}</td><td>${roleBadge}</td><td>${statusBadge}</td><td>${actionBtn}</td>`;
+                const emailCell = document.createElement("td");
+                const email = document.createElement("b");
+                email.textContent = user.email;
+                emailCell.appendChild(email);
+                const nameCell = document.createElement("td");
+                nameCell.textContent = user.fullName;
+                const roleCell = document.createElement("td");
+                roleCell.textContent = user.role === "owner" ? "👑 Chủ khách sạn" : "👤 Lễ tân";
+                const statusCell = document.createElement("td");
+                statusCell.textContent = user.active ? "Hoạt động" : "Đã khóa";
+                statusCell.style.color = user.active ? "var(--success)" : "var(--danger)";
+                const actionCell = document.createElement("td");
+                if (user.role === "staff") {
+                    const action = document.createElement("span");
+                    action.className = "action-link action-del";
+                    action.textContent = user.active ? "Khóa" : "Mở khóa";
+                    action.onclick = () => toggleUserStatus(user.email);
+                    actionCell.appendChild(action);
+                } else {
+                    actionCell.textContent = "---";
+                }
+                tr.append(emailCell, nameCell, roleCell, statusCell, actionCell);
                 tbody.appendChild(tr);
             });
         }
 
         function openAddUserModal() {
-            if (currentUser?.role !== "owner") return;
+            if (currentUser?.role !== "owner" || !currentBranch) return;
             document.getElementById("newUsername").value = "";
-            document.getElementById("newPassword").value = "";
             document.getElementById("newFullName").value = "";
+            document.getElementById("staffInviteResult").style.display = "none";
+            document.getElementById("createStaffInviteButton").style.display = "inline-block";
             document.getElementById("userModal").style.display = "flex";
         }
 
         async function saveNewUser() {
-            if (currentUser?.role !== "owner") return;
-            const username = document.getElementById("newUsername").value.trim();
-            const password = document.getElementById("newPassword").value;
+            if (currentUser?.role !== "owner" || !currentBranch) return;
+            const email = document.getElementById("newUsername").value.trim().toLowerCase();
             const fullName = document.getElementById("newFullName").value.trim();
-            if (!username || !password || !fullName) {
-                await showNotice("Vui lòng nhập tên đăng nhập, mật khẩu và họ tên lễ tân.");
+            if (!email || !email.includes("@") || !fullName) {
+                await showNotice("Vui lòng nhập email hợp lệ và họ tên lễ tân.");
                 return;
             }
-            if (users.some(user => user.username.toLowerCase() === username.toLowerCase())) {
-                await showNotice("Tên đăng nhập đã tồn tại.");
-                return;
+            if (!await confirmAction(`Tạo mã mời cho ${fullName} (${email})?`, "Mời lễ tân")) return;
+            try {
+                const code = await cloudRpc("pms_create_staff_invite", {
+                    p_branch_id: currentBranch,
+                    p_email: email,
+                    p_full_name: fullName
+                });
+                document.getElementById("staffInviteCode").textContent = code;
+                document.getElementById("staffInviteResult").style.display = "block";
+                document.getElementById("createStaffInviteButton").style.display = "none";
+                await renderUsersTable();
+            } catch (error) {
+                await showNotice(`Không tạo được mã mời: ${cloudErrorMessage(error)}`, "Lỗi cloud");
             }
-            if (!await confirmAction(`Xác nhận tạo tài khoản lễ tân "${username}" cho ${fullName}?`, "Tạo tài khoản")) return;
-            users.push({ username, password, fullName, role: "staff", active: true });
-            localStorage.setItem("pms_users", JSON.stringify(users));
-            renderUsersTable();
-            closeModal("userModal");
         }
 
         async function toggleUserStatus(username) {
-            if (currentUser?.role !== "owner") return;
-            const u = users.find(usr => usr.username === username);
-            if (!u || !await confirmAction(`Xác nhận ${u.active ? "khóa" : "mở khóa"} tài khoản ${u.username}?`, "Thay đổi trạng thái tài khoản", !u.active)) return;
-            u.active = !u.active;
-            localStorage.setItem("pms_users", JSON.stringify(users));
-            renderUsersTable();
+            if (currentUser?.role !== "owner" || !currentBranch) return;
+            const user = users.find(item => item.email === username);
+            if (!user || !await confirmAction(`Xác nhận ${user.active ? "khóa" : "mở khóa"} tài khoản ${user.email}?`, "Thay đổi trạng thái tài khoản", !user.active)) return;
+            try {
+                await cloudRpc("pms_set_staff_active", {
+                    p_branch_id: currentBranch,
+                    p_email: user.email,
+                    p_active: !user.active
+                });
+                await renderUsersTable();
+            } catch (error) {
+                await showNotice(`Không đổi được trạng thái tài khoản: ${cloudErrorMessage(error)}`, "Lỗi cloud");
+            }
         }
 
         /* THU CHI & HÓA ĐƠN */
@@ -2383,6 +2716,7 @@
         }
 
         async function saveTransaction() {
+            if (currentUser?.role !== "owner") return;
             const type = document.getElementById("txType").value;
             const amount = parseFloat(document.getElementById("txAmount").value);
             const note = document.getElementById("txNote").value.trim();

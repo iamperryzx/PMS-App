@@ -10,6 +10,7 @@ on:
       - preload.cjs
       - package.json
       - package-lock.json
+      - supabase-setup.sql
       - scripts/prepare-release.cjs
       - scripts/create-release-notes.cjs
       - .github/workflows/release.yml

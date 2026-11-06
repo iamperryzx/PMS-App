@@ -1962,7 +1962,7 @@
         function calculateRoomPriceDetails(room) {
             if (room.status === 'empty' || !room.guestInfo) return { roomCharge: 0, serviceTotal: 0, grandTotal: 0, surcharge: 0, adjustmentsTotal: 0 };
 
-            const cat = categories.find(c => c.name === room.category) || categories[0];
+            const cat = findRoomCategory(room.category) || categories[0];
             if (!cat) return { roomCharge: 0, serviceTotal: 0, grandTotal: 0, surcharge: 0, adjustmentsTotal: 0 };
             let roomCharge = 0;
             let surcharge = 0;
@@ -2023,6 +2023,19 @@
             return String(name ?? "").normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase("vi-VN");
         }
 
+        function findRoomCategory(categoryName) {
+            const normalizedName = normalizeCategoryName(categoryName);
+            const exactMatch = categories.find(category => normalizeCategoryName(category.name) === normalizedName);
+            if (exactMatch || !normalizedName) return exactMatch || null;
+
+            const legacyMatches = categories.filter(category => {
+                const normalizedCategory = normalizeCategoryName(category.name);
+                return normalizedCategory.startsWith(normalizedName) &&
+                    /^[\s\-–—(/]/u.test(normalizedCategory.slice(normalizedName.length));
+            });
+            return legacyMatches.length === 1 ? legacyMatches[0] : null;
+        }
+
         function filterRooms(catName, btn) {
             const selectedCategory = categories.find(category => normalizeCategoryName(category.name) === normalizeCategoryName(catName));
             currentFilter = selectedCategory?.name || "Tất cả";
@@ -2035,8 +2048,9 @@
             const filterName = normalizeCategoryName(currentFilter);
             let visibleCount = 0;
             document.querySelectorAll("#roomGrid .room-card").forEach(card => {
+                const roomCategory = findRoomCategory(card.dataset.category);
                 const matches = currentFilter === "Tất cả" ||
-                    normalizeCategoryName(card.dataset.category) === filterName;
+                    normalizeCategoryName(roomCategory?.name || card.dataset.category) === filterName;
                 card.hidden = !matches;
                 if (matches) visibleCount += 1;
             });
@@ -2163,7 +2177,8 @@
             const addRoomCard = (room, grid) => {
                 const card = document.createElement("div");
                 card.className = `room-card ${room.status}`;
-                card.dataset.category = room.category || "";
+                const roomCategory = findRoomCategory(room.category);
+                card.dataset.category = roomCategory?.name || room.category || "";
                 card.onclick = () => handleRoomClick(room.id);
                 card.ondragend = finishRoomDrag;
                 
@@ -2192,7 +2207,7 @@
                         <span class="room-name">${escapeHTML(room.name)}</span>
                         ${isRoomSorting && currentUser?.role === "owner" ? `<button class="room-drag-handle" type="button" draggable="true" aria-label="Giữ và kéo phòng ${escapeHTML(room.name)} sang tầng khác" title="Giữ và kéo để chuyển tầng">⠿</button>` : ""}
                     </div>
-                    <span class="room-category">${escapeHTML(room.category || "Chưa có danh mục")}</span>
+                    <span class="room-category">${escapeHTML(roomCategory?.name || room.category || "Chưa có danh mục")}</span>
                     <div class="room-badge">${room.status === 'empty' ? '⚪ Đang trống' : '🟢 Đang ở'}</div>
                     ${detailsHTML}
                 `;
@@ -2292,7 +2307,7 @@
             const checkInTimestamp = new Date(room.guestInfo.checkInTime).getTime();
             const stayStart = Number.isFinite(checkInTimestamp) ? checkInTimestamp : "";
             document.getElementById("actionInfo").innerHTML = `
-                Hạng phòng: <b>${room.category}</b><br>
+                Hạng phòng: <b>${escapeHTML(findRoomCategory(room.category)?.name || room.category || "")}</b><br>
                 Giờ vào: <b>${room.guestInfo.timeStr}</b><br>
                 Giờ ra: <b class="live-current-time" data-stay-start="${stayStart}"></b><br>
                 Khách đã ở: <b class="live-stay-duration" data-stay-start="${stayStart}"></b>
@@ -2495,8 +2510,10 @@
         async function changeServiceQty(index, delta) {
             const room = rooms.find(r => r.id === currentActiveRoomId);
             const item = room.guestInfo.services[index];
-            const action = delta > 0 ? `thêm 1 ${item.name}` : item.qty === 1 ? `xóa ${item.name} khỏi dịch vụ phòng` : `giảm 1 ${item.name}`;
-            if (!await confirmAction(`Xác nhận ${action}?`, "Điều chỉnh dịch vụ", delta < 0 && item.qty === 1)) return;
+            if (delta < 0) {
+                const action = item.qty === 1 ? `xóa ${item.name} khỏi dịch vụ phòng` : `giảm 1 ${item.name}`;
+                if (!await confirmAction(`Xác nhận ${action}?`, "Điều chỉnh dịch vụ", item.qty === 1)) return;
+            }
             const invItem = inventory.find(i => i.name === item.name);
 
             if (delta > 0) {
@@ -2522,9 +2539,8 @@
             const qty = parseInt(document.getElementById("serviceQty").value);
             const itemName = select.value;
             const invItem = inventory.find(i => i.name === itemName);
-
             if (!invItem || !qty || invItem.stock < qty) { await showNotice("Số lượng tồn kho không đủ!"); return; }
-            if (!await confirmAction(`Xác nhận thêm ${qty} ${invItem.unit} ${itemName} vào hóa đơn phòng?`, "Thêm dịch vụ")) return;
+            if (!invItem || !qty || invItem.stock < qty) { await showNotice("Số lượng tồn kho không đủ!"); return; }
             
             invItem.stock -= qty;
             const room = rooms.find(r => r.id === currentActiveRoomId);
@@ -2735,11 +2751,10 @@
                     await showNotice("Không tìm thấy hạng phòng cần cập nhật. Vui lòng tải lại dữ liệu.");
                     return;
                 }
+                const assignedRooms = rooms.filter(room => findRoomCategory(room.category)?.name === editName);
                 categories[idx] = newCat;
                 if (name !== editName) {
-                    rooms.forEach(room => {
-                        if (room.category === editName) room.category = name;
-                    });
+                    assignedRooms.forEach(room => { room.category = name; });
                     if (currentFilter === editName) currentFilter = name;
                 }
             } else {
@@ -2770,7 +2785,7 @@
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
                     <td><b>${escapeHTML(r.name)}</b></td>
-                    <td>${escapeHTML(r.category)}${r.floor ? `<br><small class="room-floor-label">Tầng: ${escapeHTML(r.floor)}</small>` : ""}</td>
+                    <td>${escapeHTML(findRoomCategory(r.category)?.name || r.category)}${r.floor ? `<br><small class="room-floor-label">Tầng: ${escapeHTML(r.floor)}</small>` : ""}</td>
                     <td><span class="tag-income">Đã áp dụng giá hạng phòng</span></td>
                     <td>
                         <span class="action-link action-edit" onclick="openEditRoomModal(${r.id})">Sửa</span>
@@ -2805,11 +2820,12 @@
         function fillRoomCategorySelect(selectedCat = "") {
             const select = document.getElementById("roomCatSelect");
             select.innerHTML = "";
+            const selectedCategoryName = findRoomCategory(selectedCat)?.name || selectedCat;
             categories.forEach(c => {
                 const opt = document.createElement("option");
                 opt.value = c.name;
                 opt.innerText = c.name;
-                if(c.name === selectedCat) opt.selected = true;
+                if(c.name === selectedCategoryName) opt.selected = true;
                 select.appendChild(opt);
             });
         }

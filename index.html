@@ -318,7 +318,7 @@
         .late-checkout-hint { margin-top: 10px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
         @media (max-width: 620px) {
             .late-rule-row { grid-template-columns: minmax(0, 1fr) 32px; }
-            .late-rule-row .late-rule-type, .late-rule-row .late-rule-time-field, .late-rule-row .late-rule-amount { grid-column: 1; }
+            .late-rule-row .late-rule-type, .late-rule-row .late-rule-time-field, .late-rule-row .late-rule-amount, .late-rule-row .late-rule-hourly-price { grid-column: 1; }
             .late-rule-row .late-rule-description { grid-column: 1 / -1; }
             .late-rule-row .btn-remove-rule { grid-column: 2; grid-row: 2; }
         }
@@ -2194,7 +2194,8 @@
                     type: rule.type,
                     start: rule.start || previousEnd,
                     end: rule.end || (rule.type === "overnight" ? checkoutTime : ""),
-                    amount: Number(rule.amount) || 0
+                    amount: Number(rule.amount) || 0,
+                    ...(rule.hourlyPrice !== undefined ? { hourlyPrice: Number(rule.hourlyPrice) || 0 } : {})
                 };
                 previousEnd = normalizedRule.end || previousEnd;
                 return normalizedRule;
@@ -2271,8 +2272,10 @@
             if (activeRule?.type === "hourly") {
                 const billableHours = Math.ceil((cycleMinutes - activeRule.startOffset) / 60);
                 if (billableHours > 0) {
-                    stageCharge = Number(category.firstHourPrice || 0) +
-                        Math.max(0, billableHours - 1) * Number(category.nextHourPrice || 0);
+                    stageCharge = Number.isFinite(Number(activeRule.hourlyPrice))
+                        ? billableHours * Number(activeRule.hourlyPrice)
+                        : Number(category.firstHourPrice || 0) +
+                            Math.max(0, billableHours - 1) * Number(category.nextHourPrice || 0);
                     stage = `Khung tính giờ (${billableHours} giờ)`;
                 }
             } else if (activeRule?.type === "fixed") {
@@ -2993,8 +2996,9 @@
                 row.querySelector(".late-rule-type").querySelector('option[value="overnight"]').disabled =
                     !isOvernight && index !== rows.length - 1;
                 row.querySelector(".late-rule-amount").hidden = type !== "fixed";
+                row.querySelector(".late-rule-hourly-price").hidden = type !== "hourly";
                 const descriptions = {
-                    hourly: "Trong khoảng giờ này: tính theo số giờ trễ (làm tròn lên) và bảng giá giờ của hạng phòng.",
+                    hourly: "Trong khoảng giờ này: đơn giá riêng của khung nhân số giờ trễ (làm tròn lên).",
                     fixed: "Trong khoảng giờ này: thay mức phụ thu trước bằng số tiền cố định bên cạnh.",
                     overnight: "Trong khoảng giờ này: cộng thêm một giá qua đêm; khung phải kết thúc vào giờ checkout chuẩn ngày hôm sau."
                 };
@@ -3080,6 +3084,17 @@
             amount.placeholder = "Số tiền cố định";
             amount.setAttribute("aria-label", "Phí cố định của khung");
 
+            const hourlyPrice = document.createElement("input");
+            hourlyPrice.type = "number";
+            hourlyPrice.className = "late-rule-hourly-price";
+            hourlyPrice.min = "0";
+            hourlyPrice.step = "1000";
+            hourlyPrice.value = rule.hourlyPrice === undefined
+                ? (rule.type ? "" : String(Number(document.getElementById("catNextHourPrice").value) || 0))
+                : String(Number(rule.hourlyPrice) || 0);
+            hourlyPrice.placeholder = "Nhập giá/giờ";
+            hourlyPrice.setAttribute("aria-label", "Đơn giá của khung tính theo giờ");
+
             const removeButton = document.createElement("button");
             removeButton.type = "button";
             removeButton.className = "btn-remove-rule";
@@ -3094,7 +3109,7 @@
             stage.className = "late-rule-stage";
             stage.style.gridColumn = "1 / -1";
 
-            row.append(stage, typeSelect, startField, endField, amount, removeButton, description);
+            row.append(stage, typeSelect, startField, endField, amount, hourlyPrice, removeButton, description);
             const rolloverRow = existingRows.find(item => item.querySelector(".late-rule-type").value === "overnight");
             container.insertBefore(row, rolloverRow || null);
             if (rolloverRow && !rule.start) rolloverRow.querySelector(".late-rule-start").value = endTime.value;
@@ -3111,6 +3126,7 @@
             const row = document.getElementById(rowId);
             if (!row || !await confirmAction("Xóa khung giờ phụ thu này?", "Xóa khung giờ", true)) return;
             row.remove();
+            updateLateRuleRows();
         }
 
         function renderCategorySettingsTable() {
@@ -3123,7 +3139,7 @@
                     ...lateRules.map((rule, index) => {
                         const range = `${escapeHTML(rule.start || "")}–${escapeHTML(rule.end || "")}`;
                         if (rule.type === "overnight") return `• Khung ${index + 1} (${range}): Cộng ${Number(cat.overnightPrice || 0).toLocaleString("vi-VN")}đ mỗi chu kỳ`;
-                        if (rule.type === "hourly") return `• Khung ${index + 1} (${range}): Tính giờ`;
+                        if (rule.type === "hourly") return `• Khung ${index + 1} (${range}): ${Number(rule.hourlyPrice ?? cat.nextHourPrice ?? 0).toLocaleString("vi-VN")}đ/giờ`;
                         return `• Khung ${index + 1} (${range}): Cố định ${Number(rule.amount || 0).toLocaleString("vi-VN")}đ`;
                     })
                 ].join("<br>");
@@ -3149,7 +3165,12 @@
             document.getElementById("catNameInput").value = "";
             document.getElementById("lateRulesContainer").innerHTML = "";
             document.getElementById("catCheckoutTime").value = "12:00";
-            addLateRuleRow({ type: "hourly", start: "12:00", end: "14:00" });
+            addLateRuleRow({
+                type: "hourly",
+                start: "12:00",
+                end: "14:00",
+                hourlyPrice: Number(document.getElementById("catNextHourPrice").value) || 0
+            });
             const firstHourPrice = Number(document.getElementById("catFirstHourPrice").value) || 0;
             const nextHourPrice = Number(document.getElementById("catNextHourPrice").value) || 0;
             addLateRuleRow({ type: "fixed", start: "14:00", end: "18:00", amount: firstHourPrice + nextHourPrice });
@@ -3226,7 +3247,13 @@
                     }
                     lateRules.push({ type, start, end, amount });
                 } else {
-                    lateRules.push({ type: "hourly", start, end });
+                    const hourlyPriceInput = row.querySelector(".late-rule-hourly-price");
+                    const hourlyPrice = Number(hourlyPriceInput.value);
+                    if (!hourlyPriceInput.value.trim() || !Number.isFinite(hourlyPrice) || hourlyPrice < 0) {
+                        await showNotice(`Vui lòng nhập đơn giá theo giờ hợp lệ cho Khung ${index + 1}.`);
+                        return;
+                    }
+                    lateRules.push({ type: "hourly", start, end, hourlyPrice });
                 }
                 previousOffset = offsets.endOffset;
             }

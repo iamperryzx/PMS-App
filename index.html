@@ -178,11 +178,20 @@
         .room-card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 2px solid var(--border); cursor: pointer; transition: all 0.2s ease; }
         .room-card:hover { transform: translateY(-3px); box-shadow: 0 8px 12px -2px rgba(0,0,0,0.08); }
         .room-card.empty { border-color: var(--border); background: #ffffff; }
-        .room-card.occupied { background: #dcebe0; border-color: #8fb29d; }
+        .room-card.occupied { background: #c6e8cd; border-color: #73ad81; }
 
-        .room-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-width: 0; margin-bottom: 10px; }
-        .room-name { flex: 0 0 auto; font-size: 16px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
-        .room-category { min-width: 0; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: var(--text-muted); background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
+        .room-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-width: 0; margin-bottom: 4px; }
+        .room-name { flex: 0 1 auto; min-width: 0; font-size: 16px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+        .room-category { display: block; width: fit-content; max-width: 100%; margin-bottom: 8px; overflow-wrap: anywhere; font-size: 11px; color: var(--text-muted); background: #f1f5f9; padding: 3px 6px; border-radius: 4px; }
+        .room-floor-label { display: block; margin: -4px 0 7px; color: #64748b; font-size: 11px; }
+        .room-drag-handle { display: none; flex: 0 0 auto; padding: 2px 6px; border: 1px solid #d5d0c6; border-radius: 5px; background: #fffefa; color: #536174; cursor: grab; touch-action: none; user-select: none; }
+        .room-grid.is-sorting .room-drag-handle { display: inline-flex; }
+        .room-grid.is-sorting .room-drag-handle:active { cursor: grabbing; }
+        .room-card.dragging-room { opacity: .5; }
+        .room-floor-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; flex-wrap: wrap; }
+        .room-floor-filters, .room-floor-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .room-sort-hint { color: var(--text-muted); font-size: 12px; }
+        .room-floor-target.drag-over { outline: 2px dashed var(--success); outline-offset: 2px; background: #e1f1e4; }
         .room-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         .empty .room-badge { background: #f1f5f9; color: var(--text-muted); }
         .occupied .room-badge { background: #d1fae5; color: #065f46; }
@@ -367,7 +376,7 @@
         }
         .room-card:hover { border-color: #cdbb92; box-shadow: 0 12px 24px rgba(38,45,54,0.09); }
         .room-card.empty { background: #fffefa; border-color: #e5dfd3; }
-        .room-card.occupied { background: #dcebe0; border-color: #8fb29d; }
+        .room-card.occupied { background: #c6e8cd; border-color: #73ad81; }
         .room-category { color: #756644; background: #f1ecdf; }
         .occupied .room-badge { background: #dcebe0; color: #34674f; }
         .room-price-tag { color: #98644b; }
@@ -387,6 +396,13 @@
         .sub-tab-btn { padding: 7px 10px; color: #697689; transition: background-color 0.18s ease, color 0.18s ease; }
         .sub-tab-btn:hover { background: #f3f0e9; color: #34445a; }
         .sub-tab-btn.active { color: #25364a; background: #ebe6da; }
+        .room-category { color: #756644; background: #f1ecdf; }
+        .room-card.occupied { color: #254a32; }
+        .room-card.occupied:hover { border-color: #58946a; }
+        .room-card.occupied .room-details { color: #456b50; border-top-color: rgba(57,120,97,.28); }
+        .room-card.occupied .room-badge { background: #a9d8b3; color: #205a32; }
+        .room-card.occupied .room-price-tag { color: #8b4e34; }
+        .room-floor-filters .btn-filter.drag-over { outline: 2px dashed var(--success); outline-offset: 2px; }
         .modal { background: rgba(16,25,38,0.58); backdrop-filter: blur(5px); }
         .modal-content { width: min(680px, calc(100vw - 32px)); border: 1px solid #e9e1d1; border-radius: 16px; box-shadow: 0 24px 70px rgba(10,18,28,0.24); }
         .modal-header { color: #2c3d52; padding-bottom: 12px; border-bottom: 1px solid #eee8dd; }
@@ -634,6 +650,14 @@
                 <div class="right-room-column">
                     <div class="toolbar">
                         <div class="filters" id="categoryFilterContainer"></div>
+                        <div class="room-floor-toolbar">
+                            <div class="room-floor-filters" id="roomFloorFilterContainer"></div>
+                            <div class="room-floor-actions">
+                                <span id="roomSortHint" class="room-sort-hint" style="display:none;">Giữ biểu tượng ⠿ trên phòng và kéo thả vào tầng muốn chuyển.</span>
+                                <button id="roomSortButton" class="btn-modal btn-cancel owner-only" type="button" style="display:none; padding:7px 12px;" onclick="toggleRoomSorting()">↕️ Sắp xếp</button>
+                                <button id="addFloorButton" class="btn-modal btn-confirm owner-only" type="button" style="display:none; padding:7px 12px;" onclick="addRoomFloor()">+ Thêm tầng</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="room-grid" id="roomGrid"></div>
@@ -1030,14 +1054,16 @@
     <!-- Modal Thêm Tài Khoản Nhân Viên -->
     <div class="modal" id="userModal">
         <div class="modal-content">
-            <div class="modal-header"><span>👥 Thêm Tài Khoản Lễ Tân Mới</span><span style="cursor:pointer;" onclick="closeModal('userModal')">✕</span></div>
-            <div class="form-group">
-                <label>Tên đăng nhập:</label>
-                <input type="text" id="newUsername" autocomplete="off" maxlength="32">
+        <div class="modal-header"><span id="userModalTitle">👥 Thêm Tài Khoản Lễ Tân Mới</span><span style="cursor:pointer;" onclick="closeModal('userModal')">✕</span></div>
+        <input id="editUsername" type="hidden">
+        <div class="form-group">
+            <label>Tên đăng nhập:</label>
+            <input type="text" id="newUsername" autocomplete="off" maxlength="32">
             </div>
             <div class="form-group">
                 <label>Mật khẩu:</label>
                 <input type="password" id="newPassword" autocomplete="new-password" minlength="8">
+                <small id="userPasswordHint" style="display:none; color:var(--text-muted);">Để trống nếu không muốn đổi mật khẩu.</small>
             </div>
             <div class="form-group">
                 <label>Họ và tên lễ tân:</label>
@@ -1045,7 +1071,7 @@
             </div>
             <div class="modal-buttons">
                 <button class="btn-modal btn-cancel" onclick="closeModal('userModal')">Hủy</button>
-                <button class="btn-modal btn-confirm" onclick="saveNewUser()">Tạo tài khoản</button>
+                <button id="saveUserButton" class="btn-modal btn-confirm" onclick="saveStaffAccount()">Tạo tài khoản</button>
             </div>
         </div>
     </div>
@@ -1150,6 +1176,8 @@
         let hotelInfo = {};
         let currentActiveRoomId = null;
         let currentFilter = "Tất cả";
+        let currentFloorFilter = "Tất cả tầng";
+        let isRoomSorting = false;
         let viewingInvoiceId = null;
         let appDialogResolver = null;
 
@@ -1292,7 +1320,13 @@
             transactions = Array.isArray(state.transactions) ? state.transactions : [];
             categories = Array.isArray(state.categories) ? state.categories : [];
             hotelInfo = state.hotelInfo && typeof state.hotelInfo === "object" ? state.hotelInfo : {};
+            hotelInfo.roomFloors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
+            if (currentFloorFilter !== "Tất cả tầng" && currentFloorFilter !== "Chưa xếp tầng" &&
+                !hotelInfo.roomFloors.includes(currentFloorFilter)) {
+                currentFloorFilter = "Tất cả tầng";
+            }
             renderCategoryFilters();
+            renderRoomFloorFilters();
             renderRooms();
             renderDashboardInvoices();
             renderTransactions();
@@ -1509,6 +1543,8 @@
             if (!branches.some(branch => branch.id === id)) return;
             currentBranch = id;
             currentFilter = "Tất cả";
+            currentFloorFilter = "Tất cả tầng";
+            isRoomSorting = false;
             document.getElementById("currentBranchDisplay").innerText = branches.find(branch => branch.id === id).name;
             document.getElementById("branchScreen").style.display = "none";
             document.getElementById("appContainer").style.display = "block";
@@ -1617,6 +1653,7 @@
                 element.style.display = currentUser.role === "owner" ? "inline-block" : "none";
             });
             document.getElementById("createTransactionButton").style.display = "none";
+            updateRoomSortControls();
         }
 
         async function completePendingMembership(code, fullName = "") {
@@ -1979,9 +2016,121 @@
 
         function filterRooms(catName, btn) {
             currentFilter = catName;
-            document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll("#categoryFilterContainer .btn-filter").forEach(button => button.classList.remove("active"));
             if(btn) btn.classList.add('active');
             renderRooms(catName);
+        }
+
+        function updateRoomSortControls() {
+            const isOwner = currentUser?.role === "owner";
+            const sortButton = document.getElementById("roomSortButton");
+            const addFloorButton = document.getElementById("addFloorButton");
+            const sortHint = document.getElementById("roomSortHint");
+            if (!sortButton || !addFloorButton) return;
+            sortButton.style.display = isOwner ? "inline-block" : "none";
+            sortButton.textContent = isRoomSorting ? "✓ Hoàn tất sắp xếp" : "↕️ Sắp xếp";
+            addFloorButton.style.display = isOwner && isRoomSorting ? "inline-block" : "none";
+            if (sortHint) sortHint.style.display = isOwner && isRoomSorting ? "inline" : "none";
+        }
+
+        function renderRoomFloorFilters() {
+            const container = document.getElementById("roomFloorFilterContainer");
+            if (!container) return;
+            container.replaceChildren();
+            const floors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
+            if (!floors.length && !isRoomSorting) {
+                updateRoomSortControls();
+                return;
+            }
+            const filters = [
+                { label: "Tất cả tầng", value: "Tất cả tầng" },
+                { label: "Chưa xếp tầng", value: "Chưa xếp tầng" },
+                ...floors.map(floor => ({ label: floor, value: floor }))
+            ];
+            filters.forEach(({ label, value }) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `btn-filter room-floor-target ${currentFloorFilter === value ? "active" : ""}`;
+                button.textContent = label;
+                button.onclick = () => {
+                    currentFloorFilter = value;
+                    renderRoomFloorFilters();
+                    renderRooms();
+                };
+                button.ondragover = event => {
+                    if (!isRoomSorting || currentUser?.role !== "owner") return;
+                    event.preventDefault();
+                    button.classList.add("drag-over");
+                };
+                button.ondragleave = () => button.classList.remove("drag-over");
+                button.ondrop = event => assignRoomToFloor(event, value);
+                container.appendChild(button);
+            });
+            updateRoomSortControls();
+        }
+
+        function toggleRoomSorting() {
+            if (currentUser?.role !== "owner") return;
+            isRoomSorting = !isRoomSorting;
+            updateRoomSortControls();
+            renderRoomFloorFilters();
+            renderRooms();
+        }
+
+        async function addRoomFloor() {
+            if (currentUser?.role !== "owner" || !isRoomSorting) return;
+            const enteredName = await promptValue("Nhập tên tầng mới:", "", "Thêm tầng");
+            const floorName = enteredName?.trim();
+            if (!floorName) return;
+            if (floorName.length > 40) {
+                await showNotice("Tên tầng không được dài quá 40 ký tự.");
+                return;
+            }
+            if (["tất cả tầng", "chưa xếp tầng"].includes(floorName.toLocaleLowerCase("vi"))) {
+                await showNotice("Tên tầng này được dành riêng cho bộ lọc. Vui lòng nhập tên khác.");
+                return;
+            }
+            hotelInfo.roomFloors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
+            if (hotelInfo.roomFloors.some(floor => floor.toLocaleLowerCase("vi") === floorName.toLocaleLowerCase("vi"))) {
+                await showNotice("Tên tầng này đã tồn tại.");
+                return;
+            }
+            hotelInfo.roomFloors.push(floorName);
+            currentFloorFilter = "Tất cả tầng";
+            saveData();
+            renderRoomFloorFilters();
+            renderRooms();
+        }
+
+        function assignRoomToFloor(event, floor) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.classList.remove("drag-over");
+            if (!isRoomSorting || currentUser?.role !== "owner") return;
+            const roomId = event.dataTransfer?.getData("text/plain");
+            const room = rooms.find(item => String(item.id) === roomId);
+            if (!room) return;
+            if (floor === "Tất cả tầng") return;
+            if (floor === "Chưa xếp tầng") delete room.floor;
+            else room.floor = floor;
+            saveData();
+            renderRooms();
+            if (document.getElementById("roomSettings").classList.contains("active")) renderRoomSettingsTable();
+        }
+
+        function startRoomDrag(event, room) {
+            if (!isRoomSorting || currentUser?.role !== "owner") {
+                event.preventDefault();
+                return;
+            }
+            event.stopPropagation();
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", String(room.id));
+            event.currentTarget.closest(".room-card")?.classList.add("dragging-room");
+        }
+
+        function finishRoomDrag(event) {
+            event.currentTarget.closest(".room-card")?.classList.remove("dragging-room");
         }
 
         function sortRoomsByNumber(roomList) {
@@ -1996,12 +2145,19 @@
             currentFilter = filterCat;
             const grid = document.getElementById("roomGrid");
             grid.innerHTML = "";
-            const filtered = sortRoomsByNumber(filterCat === "Tất cả" ? rooms : rooms.filter(r => r.category === filterCat));
+            grid.classList.toggle("is-sorting", isRoomSorting && currentUser?.role === "owner");
+            const categoryFiltered = filterCat === "Tất cả" ? rooms : rooms.filter(room => room.category === filterCat);
+            const floorFiltered = categoryFiltered.filter(room => {
+                if (currentFloorFilter === "Chưa xếp tầng") return !room.floor;
+                return currentFloorFilter === "Tất cả tầng" || room.floor === currentFloorFilter;
+            });
+            const filtered = sortRoomsByNumber(floorFiltered);
             
             filtered.forEach(room => {
                 const card = document.createElement("div");
                 card.className = `room-card ${room.status}`;
                 card.onclick = () => handleRoomClick(room.id);
+                card.ondragend = finishRoomDrag;
                 
                 let detailsHTML = "";
                 if (room.status === 'empty') {
@@ -2022,12 +2178,20 @@
 
                 card.innerHTML = `
                     <div class="room-header">
-                        <span class="room-name">${room.name}</span>
-                        <span class="room-category">${room.category}</span>
+                        <span class="room-name">${escapeHTML(room.name)}</span>
+                        ${isRoomSorting && currentUser?.role === "owner" ? `<button class="room-drag-handle" type="button" draggable="true" aria-label="Giữ và kéo phòng ${escapeHTML(room.name)} sang tầng khác" title="Giữ và kéo để chuyển tầng">⠿</button>` : ""}
                     </div>
+                    <span class="room-category">${escapeHTML(room.category)}</span>
+                    ${room.floor ? `<span class="room-floor-label">Tầng: ${escapeHTML(room.floor)}</span>` : ""}
                     <div class="room-badge">${room.status === 'empty' ? '⚪ Đang trống' : '🟢 Đang ở'}</div>
                     ${detailsHTML}
                 `;
+                const dragHandle = card.querySelector(".room-drag-handle");
+                if (dragHandle) {
+                    dragHandle.ondragstart = event => startRoomDrag(event, room);
+                    dragHandle.onclick = event => event.stopPropagation();
+                    dragHandle.onpointerdown = event => event.stopPropagation();
+                }
                 grid.appendChild(card);
             });
             updateStats();
@@ -2511,8 +2675,8 @@
             sortRoomsByNumber(rooms).forEach(r => {
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                    <td><b>${r.name}</b></td>
-                    <td>${r.category}</td>
+                    <td><b>${escapeHTML(r.name)}</b></td>
+                    <td>${escapeHTML(r.category)}${r.floor ? `<br><small class="room-floor-label">Tầng: ${escapeHTML(r.floor)}</small>` : ""}</td>
                     <td><span class="tag-income">Đã áp dụng giá hạng phòng</span></td>
                     <td>
                         <span class="action-link action-edit" onclick="openEditRoomModal(${r.id})">Sửa</span>
@@ -2668,7 +2832,8 @@
             const tbody = document.getElementById("usersTableBody");
             tbody.innerHTML = "";
             try {
-                users = await cloudRpc("pms_list_staff", { p_branch_id: currentBranch }) || [];
+                users = (await cloudRpc("pms_list_staff", { p_branch_id: currentBranch }) || [])
+                    .map(user => ({ ...user, role: "staff" }));
             } catch (error) {
                 await showNotice(`Không tải được danh sách nhân sự: ${cloudErrorMessage(error)}`, "Lỗi cloud");
                 return;
@@ -2689,11 +2854,25 @@
                 statusCell.style.color = user.active ? "var(--success)" : "var(--danger)";
                 const actionCell = document.createElement("td");
                 if (user.role === "staff") {
-                    const action = document.createElement("span");
-                    action.className = "action-link action-del";
-                    action.textContent = user.active ? "Khóa" : "Mở khóa";
-                    action.onclick = () => toggleUserStatus(user.username);
-                    actionCell.appendChild(action);
+                    const edit = document.createElement("button");
+                    edit.className = "btn-modal btn-cancel";
+                    edit.type = "button";
+                    edit.textContent = "Sửa";
+                    edit.style.cssText = "padding:5px 9px; margin-right:6px;";
+                    edit.onclick = () => openEditUserModal(user.username);
+                    const status = document.createElement("button");
+                    status.className = `btn-modal ${user.active ? "btn-cancel" : "btn-confirm"}`;
+                    status.type = "button";
+                    status.textContent = user.active ? "Khóa" : "Mở khóa";
+                    status.style.cssText = "padding:5px 9px; margin-right:6px;";
+                    status.onclick = () => toggleUserStatus(user.username);
+                    const remove = document.createElement("button");
+                    remove.className = "btn-modal btn-danger";
+                    remove.type = "button";
+                    remove.textContent = "Xóa";
+                    remove.style.cssText = "padding:5px 9px;";
+                    remove.onclick = () => deleteStaffAccount(user.username);
+                    actionCell.append(edit, status, remove);
                 } else {
                     actionCell.textContent = "---";
                 }
@@ -2704,14 +2883,35 @@
 
         function openAddUserModal() {
             if (currentUser?.role !== "owner" || !currentBranch) return;
+            document.getElementById("userModalTitle").textContent = "👥 Thêm Tài Khoản Lễ Tân Mới";
+            document.getElementById("saveUserButton").textContent = "Tạo tài khoản";
+            document.getElementById("editUsername").value = "";
             document.getElementById("newUsername").value = "";
             document.getElementById("newPassword").value = "";
+            document.getElementById("newPassword").required = true;
+            document.getElementById("userPasswordHint").style.display = "none";
             document.getElementById("newFullName").value = "";
             document.getElementById("userModal").style.display = "flex";
         }
 
-        async function saveNewUser() {
+        function openEditUserModal(username) {
             if (currentUser?.role !== "owner" || !currentBranch) return;
+            const user = users.find(item => item.username === username);
+            if (!user || user.role === "owner") return;
+            document.getElementById("userModalTitle").textContent = `✏️ Sửa tài khoản ${user.username}`;
+            document.getElementById("saveUserButton").textContent = "Lưu thay đổi";
+            document.getElementById("editUsername").value = user.username;
+            document.getElementById("newUsername").value = user.username;
+            document.getElementById("newPassword").value = "";
+            document.getElementById("newPassword").required = false;
+            document.getElementById("userPasswordHint").style.display = "block";
+            document.getElementById("newFullName").value = user.fullName;
+            document.getElementById("userModal").style.display = "flex";
+        }
+
+        async function saveStaffAccount() {
+            if (currentUser?.role !== "owner" || !currentBranch) return;
+            const editingUsername = document.getElementById("editUsername").value;
             const username = document.getElementById("newUsername").value.trim();
             const password = document.getElementById("newPassword").value;
             const fullName = document.getElementById("newFullName").value.trim();
@@ -2719,24 +2919,66 @@
                 await showNotice("Username dài 3–32 ký tự, chỉ gồm chữ không dấu, số, dấu chấm, gạch dưới hoặc gạch ngang.");
                 return;
             }
-            if (password.length < 8 || password.length > 128 || !fullName) {
-                await showNotice("Vui lòng nhập mật khẩu từ 8 ký tự trở lên và họ tên lễ tân.");
+            if ((!editingUsername && (password.length < 8 || password.length > 128)) ||
+                (editingUsername && password && (password.length < 8 || password.length > 128)) ||
+                !fullName) {
+                await showNotice(editingUsername
+                    ? "Vui lòng nhập họ tên lễ tân và chỉ nhập mật khẩu mới nếu mật khẩu có từ 8 đến 128 ký tự."
+                    : "Vui lòng nhập mật khẩu từ 8 đến 128 ký tự và họ tên lễ tân.");
                 return;
             }
-            if (!await confirmAction(`Tạo tài khoản lễ tân "${username}" cho cơ sở này?`, "Tạo tài khoản")) return;
+            const isEditing = Boolean(editingUsername);
+            if (!await confirmAction(
+                isEditing ? `Lưu thay đổi cho tài khoản "${editingUsername}"?` : `Tạo tài khoản lễ tân "${username}" cho cơ sở này?`,
+                isEditing ? "Sửa tài khoản" : "Tạo tài khoản"
+            )) return;
             try {
-                await cloudRpc("pms_create_staff_account", {
-                    p_branch_id: currentBranch,
-                    p_username: username,
-                    p_password: password,
-                    p_full_name: fullName
-                });
+                if (isEditing) {
+                    await cloudRpc("pms_update_staff_account", {
+                        p_branch_id: currentBranch,
+                        p_username: editingUsername,
+                        p_new_username: username,
+                        p_password: password || null,
+                        p_full_name: fullName
+                    });
+                } else {
+                    await cloudRpc("pms_create_staff_account", {
+                        p_branch_id: currentBranch,
+                        p_username: username,
+                        p_password: password,
+                        p_full_name: fullName
+                    });
+                }
                 document.getElementById("newPassword").value = "";
                 await renderUsersTable();
                 closeModal("userModal");
-                await showNotice(`Đã tạo tài khoản "${username}" cho cơ sở này. Hãy gửi riêng tên đăng nhập và mật khẩu cho lễ tân.`, "Tạo tài khoản thành công");
+                await showNotice(
+                    isEditing ? `Đã cập nhật tài khoản "${username}".` : `Đã tạo tài khoản "${username}" cho cơ sở này. Hãy gửi riêng tên đăng nhập và mật khẩu cho lễ tân.`,
+                    isEditing ? "Cập nhật thành công" : "Tạo tài khoản thành công"
+                );
             } catch (error) {
-                await showNotice(`Không tạo được tài khoản: ${cloudErrorMessage(error)}`, "Lỗi cloud");
+                const migrationNote = isEditing ? " Nếu chưa chạy migration quản lý tài khoản mới trên Supabase, hãy chạy tệp supabase-staff-management-migration.sql." : "";
+                await showNotice(`${isEditing ? "Không cập nhật" : "Không tạo"} được tài khoản: ${cloudErrorMessage(error)}${migrationNote}`, "Lỗi cloud");
+            }
+        }
+
+        async function deleteStaffAccount(username) {
+            if (currentUser?.role !== "owner" || !currentBranch) return;
+            const user = users.find(item => item.username === username);
+            if (!user || !await confirmAction(
+                `Xóa tài khoản "${user.username}" khỏi cơ sở này? ${user.fullName} sẽ không còn đăng nhập được vào cơ sở này.`,
+                "Xóa tài khoản lễ tân",
+                true
+            )) return;
+            try {
+                await cloudRpc("pms_delete_staff_account", {
+                    p_branch_id: currentBranch,
+                    p_username: user.username
+                });
+                await renderUsersTable();
+                await showNotice(`Đã xóa tài khoản "${user.username}" khỏi cơ sở này.`, "Đã xóa tài khoản");
+            } catch (error) {
+                await showNotice(`Không xóa được tài khoản: ${cloudErrorMessage(error)} Nếu chưa chạy migration quản lý tài khoản mới trên Supabase, hãy chạy tệp supabase-staff-management-migration.sql.`, "Lỗi cloud");
             }
         }
 

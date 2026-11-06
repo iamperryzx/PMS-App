@@ -1,5 +1,6 @@
 -- Run once in Supabase SQL Editor after supabase-setup.sql.
 -- Existing owner accounts and branches are preserved.
+-- Then run supabase-staff-management-migration.sql to enable staff account editing and deletion.
 
 create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;

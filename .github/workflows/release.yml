@@ -12,6 +12,7 @@ on:
       - package-lock.json
       - supabase-setup.sql
       - supabase-username-migration.sql
+      - supabase-staff-management-migration.sql
       - scripts/prepare-release.cjs
       - scripts/create-release-notes.cjs
       - .github/workflows/release.yml

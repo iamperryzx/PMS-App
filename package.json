@@ -47,7 +47,15 @@
       "oneClick": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    }
+    },
+    "protocols": [
+      {
+        "name": "PMS password recovery",
+        "schemes": [
+          "pms"
+        ]
+      }
+    ]
   },
   "allowScripts": {
     "electron@37.10.3": true,

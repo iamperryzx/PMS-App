@@ -63,6 +63,8 @@
         .login-card .btn-confirm { color: #1c2633; background: linear-gradient(110deg, #d9c18e, #c6a567); font-weight: 800; letter-spacing: 0.08em; }
         .login-card .btn-confirm:hover { background: linear-gradient(110deg, #e5d09f, #d3b476); box-shadow: 0 8px 20px rgba(157,122,57,0.24); }
         .login-security-note { margin-top: 20px; color: #8a96a5; font-size: 11px; text-align: center; letter-spacing: 0.02em; }
+        .login-forgot-password { display: block; margin: 12px auto 0; border: 0; background: transparent; color: #756644; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .login-forgot-password:hover { text-decoration: underline; }
         @keyframes login-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes login-card-in { from { opacity: 0; transform: translateY(16px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .branch-screen { display: none; }
@@ -131,6 +133,9 @@
         .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: var(--card-bg); padding: 20px 24px; border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border); flex-wrap: wrap; gap: 15px; }
         .app-title h1 { font-size: 22px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
         .app-title p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+        #dashboardHotelName { color: #566578; font-weight: 600; }
+        #dashboardHotelAddress { color: #758091; }
+        #dashboardHotelAddress::before { content: "Địa chỉ: "; font-weight: 600; }
         
         .stats-group { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
         .stat-card { background: #f1f5f9; padding: 10px 16px; border-radius: var(--radius-md); text-align: center; min-width: 100px; }
@@ -529,18 +534,32 @@
             </section>
             <div class="login-card">
                 <div class="login-mark">🏨</div>
-                <h2>PMS ENTERPRISE</h2>
+                <h2>PMS ENTERPRISE PRO</h2>
                 <p id="loginFormIntro">Đăng nhập để đồng bộ dữ liệu khách sạn qua Internet</p>
-                <div class="form-group">
+                <div class="form-group" id="loginUsernameGroup">
                     <label id="loginUsernameLabel" for="loginUsername">Email quản trị hoặc username lễ tân</label>
                     <input type="text" id="loginUsername" autocomplete="username">
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="loginPasswordGroup">
                     <label for="loginPassword">Mật khẩu</label>
                     <input type="password" id="loginPassword" autocomplete="current-password">
                 </div>
                 <button id="loginSubmitButton" class="btn-modal btn-confirm" onclick="handleLogin()">ĐĂNG NHẬP</button>
-                <button class="btn-modal btn-cancel" style="width:100%; margin-top:10px;" onclick="toggleRegistration(true)">Tạo tài khoản quản trị</button>
+                <button id="forgotPasswordButton" class="login-forgot-password" type="button" onclick="requestPasswordRecovery()">Quên mật khẩu?</button>
+                <button id="registrationToggleButton" class="btn-modal btn-cancel" style="width:100%; margin-top:10px;" onclick="toggleRegistration(true)">Tạo tài khoản quản trị</button>
+                <div id="passwordRecoveryFields" style="display:none; margin-top:16px;">
+                    <div class="form-group">
+                        <label for="recoveryPassword">Mật khẩu mới</label>
+                        <input type="password" id="recoveryPassword" autocomplete="new-password" minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label for="recoveryPasswordConfirm">Nhập lại mật khẩu mới</label>
+                        <input type="password" id="recoveryPasswordConfirm" autocomplete="new-password" minlength="8">
+                    </div>
+                    <button class="btn-modal btn-confirm" style="width:100%;" type="button" onclick="submitPasswordRecovery()">ĐỔI MẬT KHẨU</button>
+                    <button class="btn-modal btn-cancel" style="width:100%; margin-top:8px;" type="button" onclick="showPasswordRecovery(false)">Quay lại đăng nhập</button>
+                    <div id="passwordRecoveryError" role="alert" style="color:var(--danger); margin-top:12px; font-size:13px; display:none;"></div>
+                </div>
                 <div id="registrationFields" style="display:none; margin-top:16px;">
                     <div class="form-group">
                         <label for="registerFullName">Họ tên</label>
@@ -584,7 +603,8 @@
         <div class="dashboard-header">
             <div class="app-title">
                 <h1>🏨 PMS Enterprise Pro</h1>
-                <p>Hệ thống vận hành chuyên nghiệp dành cho Khách sạn Mini & Nhà nghỉ</p>
+                <p id="dashboardHotelName">Tên khách sạn / cơ sở</p>
+                <p id="dashboardHotelAddress" style="display:none;"></p>
                 <button id="checkForUpdatesButton" class="update-check-button" type="button" style="display:none;" onclick="checkForApplicationUpdates()">↻ Kiểm tra cập nhật</button>
             </div>
             <div class="stats-group">
@@ -796,16 +816,17 @@
                 <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px; background: #f1f5f9; padding: 12px; border-radius: 8px; flex-wrap: wrap;">
                     <div class="form-group" style="margin-bottom:0; flex:1; min-width: 150px;">
                         <label>Từ ngày:</label>
-                        <input type="date" id="reportStartDate" onchange="updateReports()">
+                        <input type="text" id="reportStartDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" aria-label="Từ ngày (dd/mm/yyyy)" oninput="formatReportDateInput(this)" onchange="updateReports()">
                     </div>
                     <div class="form-group" style="margin-bottom:0; flex:1; min-width: 150px;">
                         <label>Đến ngày:</label>
-                        <input type="date" id="reportEndDate" onchange="updateReports()">
+                        <input type="text" id="reportEndDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" aria-label="Đến ngày (dd/mm/yyyy)" oninput="formatReportDateInput(this)" onchange="updateReports()">
                     </div>
                     <div style="align-self: flex-end;">
                         <button class="btn-modal btn-confirm" onclick="resetReportFilter()">Xem tất cả</button>
                     </div>
                 </div>
+                <p id="reportDateError" role="alert" style="display:none; color:var(--danger); margin:-8px 0 16px; font-size:13px;"></p>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
                     <div style="background: #eef2ff; padding: 16px; border-radius: 8px;">
@@ -1175,6 +1196,7 @@
         let branches = [];
         let users = [];
         let currentUser = null;
+        let recoveryAccessToken = null;
 
         let categories = [];
         let inventory = [];
@@ -1328,6 +1350,7 @@
             categories = Array.isArray(state.categories) ? state.categories : [];
             hotelInfo = state.hotelInfo && typeof state.hotelInfo === "object" ? state.hotelInfo : {};
             hotelInfo.roomFloors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
+            renderDashboardHotelInfo();
             renderCategoryFilters();
             renderRooms();
             renderDashboardInvoices();
@@ -1573,19 +1596,27 @@
         }
 
         /**
-         * Format thời gian: DD/MM/YY HH:mm:ss
+         * Format thời gian: DD/MM/YYYY HH:mm:ss
          */
         function formatDateTime(dateObj) {
             const d = new Date(dateObj);
             const day = String(d.getDate()).padStart(2, '0');
             const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = String(d.getFullYear()).slice(-2);
+            const year = String(d.getFullYear());
             
             const hours = String(d.getHours()).padStart(2, '0');
             const minutes = String(d.getMinutes()).padStart(2, '0');
             const seconds = String(d.getSeconds()).padStart(2, '0');
             
             return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+        }
+
+        function formatStoredDateTime(value) {
+            const text = String(value ?? "");
+            const match = /^(\d{2}\/\d{2}\/)(\d{2})(?=\s|$)/.exec(text);
+            if (!match) return text;
+            const century = Number(match[2]) >= 70 ? "19" : "20";
+            return `${match[1]}${century}${match[2]}${text.slice(match[0].length)}`;
         }
 
         function escapeHTML(value) {
@@ -1633,8 +1664,13 @@
 
         /* ĐĂNG NHẬP */
         function toggleRegistration(show) {
+            showPasswordRecovery(false);
             document.getElementById("registrationFields").style.display = show ? "block" : "none";
             document.getElementById("loginSubmitButton").style.display = show ? "none" : "block";
+            document.getElementById("loginUsernameGroup").style.display = "block";
+            document.getElementById("loginPasswordGroup").style.display = "block";
+            document.getElementById("forgotPasswordButton").style.display = show ? "none" : "block";
+            document.getElementById("registrationToggleButton").style.display = show ? "none" : "block";
             document.getElementById("loginUsernameLabel").innerText = show
                 ? "Email quản trị"
                 : "Email quản trị hoặc username lễ tân";
@@ -1642,6 +1678,112 @@
                 ? "Tạo tài khoản quản trị bằng email, họ tên và mã khởi tạo."
                 : "Đăng nhập để đồng bộ dữ liệu khách sạn qua Internet";
             document.getElementById("loginError").style.display = "none";
+        }
+
+        function showPasswordRecovery(show, message = "") {
+            const recoveryFields = document.getElementById("passwordRecoveryFields");
+            if (!recoveryFields) return;
+            if (!show) recoveryAccessToken = null;
+            recoveryFields.style.display = show ? "block" : "none";
+            document.getElementById("loginError").style.display = "none";
+            document.getElementById("loginUsernameGroup").style.display = show ? "none" : "block";
+            document.getElementById("loginPasswordGroup").style.display = show ? "none" : "block";
+            document.getElementById("loginSubmitButton").style.display = show ? "none" : "block";
+            document.getElementById("forgotPasswordButton").style.display = show ? "none" : "block";
+            document.getElementById("registrationToggleButton").style.display = show ? "none" : "block";
+            document.getElementById("registrationFields").style.display = "none";
+            document.getElementById("loginFormIntro").innerText = show
+                ? "Nhập mật khẩu mới để hoàn tất khôi phục tài khoản quản trị."
+                : "Đăng nhập để đồng bộ dữ liệu khách sạn qua Internet";
+            const error = document.getElementById("passwordRecoveryError");
+            error.textContent = message;
+            error.style.display = message ? "block" : "none";
+            if (show) document.getElementById("recoveryPassword").focus();
+        }
+
+        async function requestPasswordRecovery() {
+            const account = document.getElementById("loginUsername").value.trim();
+            const errorElement = document.getElementById("loginError");
+            errorElement.style.display = "none";
+            if (!account.includes("@")) {
+                await showNotice("Tài khoản dùng username không thể tự đặt lại mật khẩu. Vui lòng liên hệ quản trị viên hoặc anh Phúc qua số 0926.926.689 để được hỗ trợ.", "Quên mật khẩu");
+                return;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account)) {
+                errorElement.textContent = "Vui lòng nhập email quản trị hợp lệ để nhận liên kết khôi phục.";
+                errorElement.style.display = "block";
+                return;
+            }
+
+            try {
+                const redirectTo = encodeURIComponent("pms://app/recover");
+                await cloudRequest(`/auth/v1/recover?redirect_to=${redirectTo}`, {
+                    method: "POST",
+                    token: null,
+                    body: { email: account.toLowerCase() }
+                });
+                await showNotice("Nếu email này thuộc tài khoản quản trị, liên kết đổi mật khẩu đã được gửi. Hãy mở email trên máy có PMS và làm theo hướng dẫn.", "Kiểm tra email");
+            } catch (error) {
+                errorElement.textContent = `Không gửi được liên kết khôi phục: ${cloudErrorMessage(error)}`;
+                errorElement.style.display = "block";
+            }
+        }
+
+        async function handlePasswordRecoveryLink(link) {
+            let recoveryUrl;
+            try {
+                recoveryUrl = new URL(link);
+            } catch {
+                return;
+            }
+            if (recoveryUrl.protocol !== "pms:" || recoveryUrl.hostname !== "app" || recoveryUrl.pathname !== "/recover") return;
+            const parameters = new URLSearchParams(recoveryUrl.hash.slice(1));
+            const accessToken = parameters.get("access_token");
+            if (parameters.get("type") !== "recovery" || !accessToken) {
+                const reason = parameters.get("error_description") || "Liên kết khôi phục không hợp lệ hoặc đã hết hạn. Hãy yêu cầu gửi liên kết mới.";
+                await showNotice(reason, "Liên kết khôi phục không hợp lệ");
+                return;
+            }
+            recoveryAccessToken = accessToken;
+            document.getElementById("loginScreen").style.display = "flex";
+            document.getElementById("branchScreen").style.display = "none";
+            document.getElementById("appContainer").style.display = "none";
+            showPasswordRecovery(true);
+        }
+
+        async function submitPasswordRecovery() {
+            const password = document.getElementById("recoveryPassword").value;
+            const confirmation = document.getElementById("recoveryPasswordConfirm").value;
+            if (!recoveryAccessToken) {
+                showPasswordRecovery(false);
+                document.getElementById("loginError").textContent = "Liên kết khôi phục đã hết hạn. Hãy yêu cầu gửi liên kết mới.";
+                document.getElementById("loginError").style.display = "block";
+                return;
+            }
+            if (password.length < 8) {
+                showPasswordRecovery(true, "Mật khẩu mới phải có ít nhất 8 ký tự.");
+                return;
+            }
+            if (password !== confirmation) {
+                showPasswordRecovery(true, "Hai mật khẩu nhập lại không khớp.");
+                return;
+            }
+
+            try {
+                await cloudRequest("/auth/v1/user", {
+                    method: "PUT",
+                    token: recoveryAccessToken,
+                    body: { password }
+                });
+                recoveryAccessToken = null;
+                document.getElementById("recoveryPassword").value = "";
+                document.getElementById("recoveryPasswordConfirm").value = "";
+                showPasswordRecovery(false);
+                document.getElementById("loginPassword").value = "";
+                await showNotice("Đã đổi mật khẩu thành công. Hãy đăng nhập bằng mật khẩu mới.", "Đổi mật khẩu thành công");
+            } catch (error) {
+                showPasswordRecovery(true, `Không đổi được mật khẩu: ${cloudErrorMessage(error)}`);
+            }
         }
 
         function finishLogin(profile) {
@@ -1796,6 +1938,10 @@
                 else handleLogin();
             }
         });
+        document.getElementById("recoveryPasswordConfirm").addEventListener("keydown", event => {
+            if (event.key === "Enter") submitPasswordRecovery();
+        });
+        window.pmsAuth?.onPasswordRecoveryLink(handlePasswordRecoveryLink);
         updateLiveOccupancyDisplay();
         setInterval(updateLiveOccupancyDisplay, 1000);
 
@@ -1851,6 +1997,15 @@
             renderHotelLogoPreview();
         }
 
+        function renderDashboardHotelInfo() {
+            const name = document.getElementById("dashboardHotelName");
+            const address = document.getElementById("dashboardHotelAddress");
+            if (!name || !address) return;
+            name.textContent = hotelInfo.name?.trim() || "Tên khách sạn / cơ sở chưa được thiết lập";
+            address.textContent = hotelInfo.address?.trim() || "";
+            address.style.display = hotelInfo.address?.trim() ? "block" : "none";
+        }
+
         function renderHotelLogoPreview() {
             const preview = document.getElementById("hotelLogoPreview");
             if (!preview) return;
@@ -1876,6 +2031,7 @@
                 bankAccount: document.getElementById("hotelBankAccountInput").value.trim(),
                 bankAccountHolder: document.getElementById("hotelBankHolderInput").value.trim()
             };
+            renderDashboardHotelInfo();
             saveData();
             await showNotice("Đã lưu thông tin khách sạn cho cơ sở này.");
         }
@@ -2192,7 +2348,7 @@
                     detailsHTML = `
                         <div class="room-details">
                             Hình thức: <b>${room.guestInfo.type}</b><br>
-                            Giờ vào: ${room.guestInfo.timeStr}<br>
+                            Giờ vào: ${escapeHTML(formatStoredDateTime(room.guestInfo.timeStr))}<br>
                             Giờ ra: <b class="live-current-time" data-stay-start="${stayStart}"></b><br>
                             Đã ở: <b class="live-stay-duration" data-stay-start="${stayStart}"></b>
                             <div class="room-price-tag">Tổng: ${priceDetails.grandTotal.toLocaleString('vi-VN')} VNĐ</div>
@@ -2308,7 +2464,7 @@
             const stayStart = Number.isFinite(checkInTimestamp) ? checkInTimestamp : "";
             document.getElementById("actionInfo").innerHTML = `
                 Hạng phòng: <b>${escapeHTML(findRoomCategory(room.category)?.name || room.category || "")}</b><br>
-                Giờ vào: <b>${room.guestInfo.timeStr}</b><br>
+                Giờ vào: <b>${escapeHTML(formatStoredDateTime(room.guestInfo.timeStr))}</b><br>
                 Giờ ra: <b class="live-current-time" data-stay-start="${stayStart}"></b><br>
                 Khách đã ở: <b class="live-stay-duration" data-stay-start="${stayStart}"></b>
             `;
@@ -2619,6 +2775,8 @@
                 id: getNextInvoiceId(),
                 roomName: room.name,
                 guestType: room.guestInfo.type,
+                paidByUsername: currentUser?.username || "",
+                paidByFullName: currentUser?.fullName || "",
                 checkInTimeStr: room.guestInfo.timeStr,
                 checkOutTimeStr: formatDateTime(now),
                 date: now.toISOString().split('T')[0],
@@ -3144,7 +3302,7 @@
             transactions.slice(0, 10).forEach(tx => {
                 const tr = document.createElement("tr");
                 const timeCell = document.createElement("td");
-                timeCell.textContent = tx.timeStr;
+                timeCell.textContent = formatStoredDateTime(tx.timeStr);
                 const typeCell = document.createElement("td");
                 typeCell.textContent = tx.type === "income" ? "+ THU" : "- CHI";
                 typeCell.className = tx.type === "income" ? "tag-income" : "tag-expense";
@@ -3178,7 +3336,7 @@
             tbody.innerHTML = "";
             invoices.forEach(inv => {
                 const tr = document.createElement("tr");
-                tr.innerHTML = `<td><b>${inv.id}</b></td><td>${inv.roomName}</td><td>${inv.guestType}</td><td>${inv.checkInTimeStr}</td><td>${inv.checkOutTimeStr}</td><td><b>${inv.total.toLocaleString('vi-VN')}đ</b></td><td><span class="tag-income">Đã thanh toán</span></td><td><span class="action-link action-edit" onclick="viewInvoiceDetail('${inv.id}')">Chi tiết</span></td>`;
+                tr.innerHTML = `<td><b>${escapeHTML(inv.id)}</b></td><td>${escapeHTML(inv.roomName)}</td><td>${escapeHTML(inv.guestType)}</td><td>${escapeHTML(formatStoredDateTime(inv.checkInTimeStr))}</td><td>${escapeHTML(formatStoredDateTime(inv.checkOutTimeStr))}</td><td><b>${inv.total.toLocaleString('vi-VN')}đ</b></td><td><span class="tag-income">Đã thanh toán</span></td><td><span class="action-link action-edit" onclick="viewInvoiceDetail('${escapeHTML(inv.id)}')">Chi tiết</span></td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -3202,11 +3360,12 @@
             const noteHTML = inv.guestNote ? `<br><b>Ghi chú khách:</b><br>${escapeHTML(inv.guestNote).replace(/\n/g, "<br>")}` : "";
 
             document.getElementById("invoiceDetailContent").innerHTML = `
-                🟢 <b>Thời gian vào:</b> ${inv.checkInTimeStr}<br>
-                🔴 <b>Thời gian ra:</b> ${inv.checkOutTimeStr}<br>
+                🟢 <b>Thời gian vào:</b> ${escapeHTML(formatStoredDateTime(inv.checkInTimeStr))}<br>
+                🔴 <b>Thời gian ra:</b> ${escapeHTML(formatStoredDateTime(inv.checkOutTimeStr))}<br>
                 <hr style="margin: 8px 0; border: none; border-top: 1px dashed #ccc;">
                 Mã Hóa Đơn: <b>${inv.id}</b><br>
                 Tên Phòng: <b>${inv.roomName}</b><br>
+                Người thanh toán: <b>${escapeHTML(inv.paidByFullName || "Chưa lưu")}</b>${inv.paidByUsername ? ` (${escapeHTML(inv.paidByUsername)})` : ""}<br>
                 Hình Thức Lưu Trú: <b>${inv.guestType}</b><br>
                 <hr style="margin: 8px 0; border: none; border-top: 1px dashed #ccc;">
                 <b>Dịch vụ phát sinh:</b><br>${servicesListHTML}<br>
@@ -3279,11 +3438,12 @@
                     <h2 class="invoice-print-title">HÓA ĐƠN THANH TOÁN</h2>
                     <div class="invoice-print-meta">
                         <div><b>Mã hóa đơn:</b> ${escapeHTML(inv.id)}</div>
-                        <div><b>Ngày thanh toán:</b> ${escapeHTML(inv.checkOutTimeStr)}</div>
+                        <div><b>Ngày thanh toán:</b> ${escapeHTML(formatStoredDateTime(inv.checkOutTimeStr))}</div>
                         <div><b>Phòng:</b> ${escapeHTML(inv.roomName)}</div>
+                        <div><b>Người thanh toán:</b> ${escapeHTML(inv.paidByFullName || "Chưa lưu")}${inv.paidByUsername ? ` (${escapeHTML(inv.paidByUsername)})` : ""}</div>
                         <div><b>Hình thức lưu trú:</b> ${escapeHTML(inv.guestType)}</div>
-                        <div><b>Thời gian vào:</b> ${escapeHTML(inv.checkInTimeStr)}</div>
-                        <div><b>Thời gian ra:</b> ${escapeHTML(inv.checkOutTimeStr)}</div>
+                        <div><b>Thời gian vào:</b> ${escapeHTML(formatStoredDateTime(inv.checkInTimeStr))}</div>
+                        <div><b>Thời gian ra:</b> ${escapeHTML(formatStoredDateTime(inv.checkOutTimeStr))}</div>
                     </div>
                     <table>
                         <thead><tr><th>Nội dung</th><th>Thành tiền</th></tr></thead>
@@ -3330,9 +3490,46 @@
             updateReports();
         }
 
+        function formatReportDateInput(input) {
+            const digits = input.value.replace(/\D/g, "").slice(0, 8);
+            input.value = digits.length > 4
+                ? `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+                : digits.length > 2
+                    ? `${digits.slice(0, 2)}/${digits.slice(2)}`
+                    : digits;
+        }
+
+        function parseReportDate(value) {
+            if (!value.trim()) return "";
+            const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+            if (!match) return null;
+            const [, dayText, monthText, yearText] = match;
+            const day = Number(dayText);
+            const month = Number(monthText);
+            const year = Number(yearText);
+            const date = new Date(Date.UTC(year, month - 1, day));
+            if (year < 1000 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+            return `${yearText}-${monthText}-${dayText}`;
+        }
+
         function updateReports() {
-            const startDate = document.getElementById("reportStartDate").value;
-            const endDate = document.getElementById("reportEndDate").value;
+            const startInput = document.getElementById("reportStartDate").value;
+            const endInput = document.getElementById("reportEndDate").value;
+            const startDate = parseReportDate(startInput);
+            const endDate = parseReportDate(endInput);
+            const errorElement = document.getElementById("reportDateError");
+            if (startDate === null || endDate === null) {
+                errorElement.textContent = "Ngày không hợp lệ. Vui lòng nhập theo định dạng dd/mm/yyyy.";
+                errorElement.style.display = "block";
+                return;
+            }
+            if (startDate && endDate && startDate > endDate) {
+                errorElement.textContent = "Ngày bắt đầu không được sau ngày kết thúc.";
+                errorElement.style.display = "block";
+                return;
+            }
+            errorElement.textContent = "";
+            errorElement.style.display = "none";
 
             let filteredInvoices = invoices.filter(inv => {
                 if (startDate && inv.date < startDate) return false;
@@ -3367,7 +3564,7 @@
             } else {
                 filteredInvoices.forEach(inv => {
                     const tr = document.createElement("tr");
-                    tr.innerHTML = `<td><b>${inv.id}</b></td><td>${inv.roomName}</td><td>${inv.guestType}</td><td>${inv.checkInTimeStr}</td><td>${inv.checkOutTimeStr}</td><td><b>${inv.total.toLocaleString('vi-VN')} VNĐ</b></td><td><span class="action-link action-edit" onclick="viewInvoiceDetail('${inv.id}')">Xem</span></td>`;
+                    tr.innerHTML = `<td><b>${escapeHTML(inv.id)}</b></td><td>${escapeHTML(inv.roomName)}</td><td>${escapeHTML(inv.guestType)}</td><td>${escapeHTML(formatStoredDateTime(inv.checkInTimeStr))}</td><td>${escapeHTML(formatStoredDateTime(inv.checkOutTimeStr))}</td><td><b>${inv.total.toLocaleString('vi-VN')} VNĐ</b></td><td><span class="action-link action-edit" onclick="viewInvoiceDetail('${escapeHTML(inv.id)}')">Xem</span></td>`;
                     tbodyRep.appendChild(tr);
                 });
             }
@@ -3380,7 +3577,7 @@
                 filteredTx.forEach(tx => {
                     const tr = document.createElement("tr");
                     const timeCell = document.createElement("td");
-                    timeCell.textContent = tx.timeStr;
+                    timeCell.textContent = formatStoredDateTime(tx.timeStr);
                     const typeCell = document.createElement("td");
                     typeCell.textContent = tx.type === "income" ? "Phiếu thu" : "Phiếu chi";
                     typeCell.className = tx.type === "income" ? "tag-income" : "tag-expense";

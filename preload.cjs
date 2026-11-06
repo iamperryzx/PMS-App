@@ -10,3 +10,11 @@ contextBridge.exposeInMainWorld("pmsUpdater", {
     return () => ipcRenderer.removeListener("updates:status", listener);
   }
 });
+
+contextBridge.exposeInMainWorld("pmsAuth", {
+  onPasswordRecoveryLink: callback => {
+    const listener = (_event, link) => callback(link);
+    ipcRenderer.on("auth:password-recovery", listener);
+    return () => ipcRenderer.removeListener("auth:password-recovery", listener);
+  }
+});

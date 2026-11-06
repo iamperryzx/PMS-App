@@ -5,6 +5,29 @@ const { autoUpdater } = require("electron-updater");
 
 let mainWindow;
 let updateCheckPromise = null;
+let pendingRecoveryLink = null;
+
+function isPasswordRecoveryLink(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "pms:" && url.hostname === "app" && url.pathname === "/recover";
+  } catch {
+    return false;
+  }
+}
+
+function dispatchPasswordRecoveryLink(value) {
+  if (!isPasswordRecoveryLink(value)) return;
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isLoading()) {
+    mainWindow.webContents.send("auth:password-recovery", value);
+  } else {
+    pendingRecoveryLink = value;
+  }
+}
+
+function findPasswordRecoveryLink(argumentsList) {
+  return argumentsList.find(isPasswordRecoveryLink);
+}
 
 function checkForUpdates() {
   if (!updateCheckPromise) {
@@ -48,6 +71,20 @@ const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
 } else {
+  pendingRecoveryLink = findPasswordRecoveryLink(process.argv) || null;
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    dispatchPasswordRecoveryLink(url);
+  });
+  app.on("second-instance", (_event, argumentsList) => {
+    const recoveryLink = findPasswordRecoveryLink(argumentsList);
+    if (recoveryLink) dispatchPasswordRecoveryLink(recoveryLink);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
   app.setPath("userData", path.join(app.getPath("appData"), "PMS Enterprise"));
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -149,6 +186,10 @@ if (!gotSingleInstanceLock) {
 
     try {
       await mainWindow.loadURL("pms://app/index.html");
+      if (pendingRecoveryLink) {
+        dispatchPasswordRecoveryLink(pendingRecoveryLink);
+        pendingRecoveryLink = null;
+      }
       if (app.isPackaged) {
         const startupCheck = setTimeout(() => {
           checkForUpdates().catch(error => {

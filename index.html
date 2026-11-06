@@ -188,7 +188,11 @@
         .room-card.dragging-room { opacity: .5; }
         .room-floor-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; width: 100%; flex-wrap: wrap; }
         .room-floor-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .room-map-toolbar { flex-wrap: nowrap; align-items: flex-start; }
+        .room-map-toolbar > .filters { flex: 1 1 auto; min-width: 0; }
+        .room-map-toolbar .room-floor-toolbar { flex: 0 0 auto; width: auto; }
         .room-sort-hint { color: var(--text-muted); font-size: 12px; }
+        .room-filter-empty { grid-column: 1 / -1; padding: 18px; border: 1px dashed var(--border); border-radius: var(--radius-md); color: var(--text-muted); text-align: center; }
         .room-floor-groups { display: grid; gap: 20px; }
         .room-floor-section { min-width: 0; padding-top: 12px; border-top: 2px solid #d8d0c0; }
         .room-floor-section.drag-over { border-top-color: var(--success); background: rgba(225,241,228,.45); }
@@ -649,7 +653,7 @@
                 </div>
 
                 <div class="right-room-column">
-                    <div class="toolbar">
+                    <div class="toolbar room-map-toolbar">
                         <div class="filters" id="categoryFilterContainer"></div>
                         <div class="room-floor-toolbar">
                             <div class="room-floor-actions">
@@ -1990,6 +1994,10 @@
 
         /* GIAO DIỆN PHÒNG */
         function renderCategoryFilters() {
+            if (currentFilter !== "Tất cả" &&
+                !categories.some(category => normalizeCategoryName(category.name) === normalizeCategoryName(currentFilter))) {
+                currentFilter = "Tất cả";
+            }
             const container = document.getElementById("categoryFilterContainer");
             container.innerHTML = "";
             const btnAll = document.createElement("button");
@@ -2007,11 +2015,16 @@
             });
         }
 
+        function normalizeCategoryName(name) {
+            return String(name ?? "").normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase("vi-VN");
+        }
+
         function filterRooms(catName, btn) {
-            currentFilter = catName;
+            const selectedCategory = categories.find(category => normalizeCategoryName(category.name) === normalizeCategoryName(catName));
+            currentFilter = selectedCategory?.name || "Tất cả";
             document.querySelectorAll("#categoryFilterContainer .btn-filter").forEach(button => button.classList.remove("active"));
             if(btn) btn.classList.add('active');
-            renderRooms(catName);
+            renderRooms(currentFilter);
         }
 
         function updateRoomSortControls() {
@@ -2109,7 +2122,9 @@
             currentFilter = filterCat;
             const container = document.getElementById("roomGrid");
             container.replaceChildren();
-            const categoryFiltered = filterCat === "Tất cả" ? rooms : rooms.filter(room => room.category === filterCat);
+            const categoryFiltered = filterCat === "Tất cả"
+                ? rooms
+                : rooms.filter(room => normalizeCategoryName(room.category) === normalizeCategoryName(filterCat));
             const visibleRooms = sortRoomsByNumber(categoryFiltered);
             const isOwnerSorting = isRoomSorting && currentUser?.role === "owner";
 
@@ -2161,7 +2176,8 @@
             };
 
             const configuredFloors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
-            const floorNames = [...new Set([...configuredFloors, ...visibleRooms.map(room => room.floor).filter(Boolean)])];
+            const floorNames = [...new Set([...configuredFloors, ...visibleRooms.map(room => room.floor).filter(Boolean)])]
+                .filter(floor => filterCat === "Tất cả" || visibleRooms.some(room => room.floor === floor));
             if (!floorNames.length && !isOwnerSorting) {
                 container.appendChild(createRoomGrid(visibleRooms));
             } else {
@@ -2173,6 +2189,14 @@
                 if (unassignedRooms.length || isOwnerSorting) {
                     addRoomFloorSection(container, null, unassignedRooms, false, isOwnerSorting, createRoomGrid);
                 }
+            }
+            if (!visibleRooms.length) {
+                const empty = document.createElement("p");
+                empty.className = "room-filter-empty";
+                empty.textContent = filterCat === "Tất cả"
+                    ? "Chưa có phòng nào."
+                    : "Danh mục này hiện chưa có phòng.";
+                container.appendChild(empty);
             }
             updateStats();
             updateLiveOccupancyDisplay();

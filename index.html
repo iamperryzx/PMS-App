@@ -176,12 +176,16 @@
         /* Room Grid */
         .room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
         .room-card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 2px solid var(--border); cursor: pointer; transition: all 0.2s ease; }
+        #roomGrid [hidden] { display: none !important; }
         .room-card:hover { transform: translateY(-3px); box-shadow: 0 8px 12px -2px rgba(0,0,0,0.08); }
         .room-card.empty { border-color: var(--border); background: #ffffff; }
         .room-card.occupied { background: #c6e8cd; border-color: #73ad81; }
 
         .room-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-width: 0; margin-bottom: 4px; }
         .room-name { flex: 0 1 auto; min-width: 0; font-size: 16px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+        .room-category { display: block; width: fit-content; max-width: 100%; margin: 0 0 8px; overflow-wrap: anywhere; border-radius: 4px; padding: 3px 6px; background: #f1ecdf; color: #756644; font-size: 11px; }
+        .room-guest-note { margin-top: 6px; border-radius: 6px; padding: 6px 8px; background: rgba(255,255,255,.55); color: #44566b; font-size: 11px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .room-card.occupied .room-guest-note { background: rgba(255,255,255,.48); color: #355b40; }
         .room-drag-handle { display: none; flex: 0 0 auto; padding: 2px 6px; border: 1px solid #d5d0c6; border-radius: 5px; background: #fffefa; color: #536174; cursor: grab; touch-action: none; user-select: none; }
         .room-grid.is-sorting .room-drag-handle { display: inline-flex; }
         .room-grid.is-sorting .room-drag-handle:active { cursor: grabbing; }
@@ -2023,8 +2027,39 @@
             const selectedCategory = categories.find(category => normalizeCategoryName(category.name) === normalizeCategoryName(catName));
             currentFilter = selectedCategory?.name || "Tất cả";
             document.querySelectorAll("#categoryFilterContainer .btn-filter").forEach(button => button.classList.remove("active"));
-            if(btn) btn.classList.add('active');
-            renderRooms(currentFilter);
+            if (btn) btn.classList.add("active");
+            applyRoomCategoryFilter();
+        }
+
+        function applyRoomCategoryFilter() {
+            const filterName = normalizeCategoryName(currentFilter);
+            let visibleCount = 0;
+            document.querySelectorAll("#roomGrid .room-card").forEach(card => {
+                const matches = currentFilter === "Tất cả" ||
+                    normalizeCategoryName(card.dataset.category) === filterName;
+                card.hidden = !matches;
+                if (matches) visibleCount += 1;
+            });
+            document.querySelectorAll("#roomGrid .room-floor-section").forEach(section => {
+                const sectionRooms = [...section.querySelectorAll(".room-card")];
+                const sectionVisibleCount = sectionRooms.filter(card => !card.hidden).length;
+                section.hidden = currentFilter !== "Tất cả" && sectionVisibleCount === 0;
+                const count = section.querySelector(".room-floor-heading small");
+                if (count) count.textContent = `${sectionVisibleCount} phòng`;
+            });
+            let emptyMessage = document.querySelector("#roomGrid .room-filter-empty");
+            if (visibleCount === 0) {
+                if (!emptyMessage) {
+                    emptyMessage = document.createElement("p");
+                    emptyMessage.className = "room-filter-empty";
+                    document.getElementById("roomGrid").appendChild(emptyMessage);
+                }
+                emptyMessage.textContent = currentFilter === "Tất cả"
+                    ? "Chưa có phòng nào."
+                    : "Danh mục này hiện chưa có phòng.";
+            } else {
+                emptyMessage?.remove();
+            }
         }
 
         function updateRoomSortControls() {
@@ -2122,15 +2157,13 @@
             currentFilter = filterCat;
             const container = document.getElementById("roomGrid");
             container.replaceChildren();
-            const categoryFiltered = filterCat === "Tất cả"
-                ? rooms
-                : rooms.filter(room => normalizeCategoryName(room.category) === normalizeCategoryName(filterCat));
-            const visibleRooms = sortRoomsByNumber(categoryFiltered);
+            const visibleRooms = sortRoomsByNumber(rooms);
             const isOwnerSorting = isRoomSorting && currentUser?.role === "owner";
 
             const addRoomCard = (room, grid) => {
                 const card = document.createElement("div");
                 card.className = `room-card ${room.status}`;
+                card.dataset.category = room.category || "";
                 card.onclick = () => handleRoomClick(room.id);
                 card.ondragend = finishRoomDrag;
                 
@@ -2149,6 +2182,9 @@
                             Đã ở: <b class="live-stay-duration" data-stay-start="${stayStart}"></b>
                             <div class="room-price-tag">Tổng: ${priceDetails.grandTotal.toLocaleString('vi-VN')} VNĐ</div>
                         </div>`;
+                    if (room.guestInfo.note?.trim()) {
+                        detailsHTML += `<div class="room-guest-note"><b>Ghi chú:</b> ${escapeHTML(room.guestInfo.note.trim())}</div>`;
+                    }
                 }
 
                 card.innerHTML = `
@@ -2156,6 +2192,7 @@
                         <span class="room-name">${escapeHTML(room.name)}</span>
                         ${isRoomSorting && currentUser?.role === "owner" ? `<button class="room-drag-handle" type="button" draggable="true" aria-label="Giữ và kéo phòng ${escapeHTML(room.name)} sang tầng khác" title="Giữ và kéo để chuyển tầng">⠿</button>` : ""}
                     </div>
+                    <span class="room-category">${escapeHTML(room.category || "Chưa có danh mục")}</span>
                     <div class="room-badge">${room.status === 'empty' ? '⚪ Đang trống' : '🟢 Đang ở'}</div>
                     ${detailsHTML}
                 `;
@@ -2177,7 +2214,7 @@
 
             const configuredFloors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
             const floorNames = [...new Set([...configuredFloors, ...visibleRooms.map(room => room.floor).filter(Boolean)])]
-                .filter(floor => filterCat === "Tất cả" || visibleRooms.some(room => room.floor === floor));
+                .filter(floor => visibleRooms.some(room => room.floor === floor) || currentFilter === "Tất cả");
             if (!floorNames.length && !isOwnerSorting) {
                 container.appendChild(createRoomGrid(visibleRooms));
             } else {
@@ -2193,11 +2230,10 @@
             if (!visibleRooms.length) {
                 const empty = document.createElement("p");
                 empty.className = "room-filter-empty";
-                empty.textContent = filterCat === "Tất cả"
-                    ? "Chưa có phòng nào."
-                    : "Danh mục này hiện chưa có phòng.";
+                empty.textContent = "Chưa có phòng nào.";
                 container.appendChild(empty);
             }
+            applyRoomCategoryFilter();
             updateStats();
             updateLiveOccupancyDisplay();
         }
@@ -2432,6 +2468,7 @@
 
             room.guestInfo.note = note;
             saveData();
+            renderRooms();
             await showNotice("Đã lưu ghi chú.");
         }
 
@@ -2722,6 +2759,7 @@
             saveData();
             renderCategorySettingsTable();
             renderCategoryFilters();
+            renderRooms();
         }
 
         /* PHÒNG */

@@ -178,11 +178,11 @@
         .room-card { background: var(--card-bg); border-radius: var(--radius-lg); padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 2px solid var(--border); cursor: pointer; transition: all 0.2s ease; }
         .room-card:hover { transform: translateY(-3px); box-shadow: 0 8px 12px -2px rgba(0,0,0,0.08); }
         .room-card.empty { border-color: var(--border); background: #ffffff; }
-        .room-card.occupied { background: var(--success-light); border-color: var(--success); }
+        .room-card.occupied { background: #dcebe0; border-color: #8fb29d; }
 
-        .room-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .room-name { font-size: 16px; font-weight: 700; color: var(--text-main); }
-        .room-category { font-size: 11px; color: var(--text-muted); background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
+        .room-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-width: 0; margin-bottom: 10px; }
+        .room-name { flex: 0 0 auto; font-size: 16px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+        .room-category { min-width: 0; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: var(--text-muted); background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
         .room-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         .empty .room-badge { background: #f1f5f9; color: var(--text-muted); }
         .occupied .room-badge { background: #d1fae5; color: #065f46; }
@@ -243,6 +243,9 @@
         .sub-tab-btn.active { background: #eef2ff; color: var(--primary); }
         .sub-tab-content { display: none; }
         .sub-tab-content.active { display: block; }
+        .report-history-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+        .report-history-section { min-width: 0; overflow-x: auto; }
+        @media (max-width: 900px) { .report-history-grid { grid-template-columns: 1fr; } }
 
         /* Khung late check-out */
         .late-rule-row {
@@ -364,7 +367,7 @@
         }
         .room-card:hover { border-color: #cdbb92; box-shadow: 0 12px 24px rgba(38,45,54,0.09); }
         .room-card.empty { background: #fffefa; border-color: #e5dfd3; }
-        .room-card.occupied { background: #eff5f0; border-color: #8fb29d; }
+        .room-card.occupied { background: #dcebe0; border-color: #8fb29d; }
         .room-category { color: #756644; background: #f1ecdf; }
         .occupied .room-badge { background: #dcebe0; color: #34674f; }
         .room-price-tag { color: #98644b; }
@@ -795,21 +798,27 @@
                     </div>
                 </div>
 
-                <h4 style="margin-top: 20px; margin-bottom: 10px;">📜 Lịch sử hóa đơn trong khoảng thời gian đã chọn:</h4>
-                <table class="custom-table">
-                    <thead>
-                        <tr><th>Mã HĐ</th><th>Phòng</th><th>Hình thức</th><th>Thời gian vào</th><th>Thời gian ra</th><th>Tổng tiền</th><th>Thao tác</th></tr>
-                    </thead>
-                    <tbody id="reportInvoicesTableBody"></tbody>
-                </table>
+                <div class="report-history-grid">
+                    <section class="report-history-section">
+                        <h4 style="margin-top: 20px; margin-bottom: 10px;">📜 Lịch sử hóa đơn trong khoảng thời gian đã chọn:</h4>
+                        <table class="custom-table">
+                            <thead>
+                                <tr><th>Mã HĐ</th><th>Phòng</th><th>Hình thức</th><th>Thời gian vào</th><th>Thời gian ra</th><th>Tổng tiền</th><th>Thao tác</th></tr>
+                            </thead>
+                            <tbody id="reportInvoicesTableBody"></tbody>
+                        </table>
+                    </section>
 
-                <h4 style="margin-top:20px; margin-bottom:10px;">💵 Phiếu thu/chi trong khoảng thời gian đã chọn:</h4>
-                <table class="custom-table">
-                    <thead>
-                        <tr><th>Thời gian</th><th>Loại phiếu</th><th>Số tiền</th><th>Lý do</th></tr>
-                    </thead>
-                    <tbody id="reportTransactionsTableBody"></tbody>
-                </table>
+                    <section class="report-history-section">
+                        <h4 style="margin-top:20px; margin-bottom:10px;">💵 Phiếu thu/chi trong khoảng thời gian đã chọn:</h4>
+                        <table class="custom-table">
+                            <thead>
+                                <tr><th>Thời gian</th><th>Loại phiếu</th><th>Số tiền</th><th>Lý do</th></tr>
+                            </thead>
+                            <tbody id="reportTransactionsTableBody"></tbody>
+                        </table>
+                    </section>
+                </div>
             </div>
         </div>
 
@@ -862,10 +871,6 @@
                 </table>
             </div>
 
-            <div class="guest-adjustment-panel">
-                <button class="btn-modal btn-confirm" type="button" style="padding:8px 12px;" onclick="openPriceAdjustmentModal()">Tăng/Giảm giá</button>
-            </div>
-
             <div class="guest-note-panel">
                 <h4>Ghi chú khách lưu trú</h4>
                 <div class="form-group">
@@ -879,6 +884,7 @@
             <div class="modal-buttons">
                 <button class="btn-modal btn-cancel" onclick="closeModal('roomActionModal')">Đóng</button>
                 <button class="btn-modal btn-warning btn-transfer" onclick="openTransferModal()"><span class="transfer-icon">🔄</span> Chuyển phòng</button>
+                <button class="btn-modal btn-confirm" type="button" style="padding:8px 12px;" onclick="openPriceAdjustmentModal()">Tăng/Giảm giá</button>
                 <button class="btn-modal btn-danger" onclick="confirmCheckOut()">Thanh toán & Trả phòng</button>
             </div>
         </div>
@@ -1610,6 +1616,7 @@
             document.querySelectorAll(".owner-only").forEach(element => {
                 element.style.display = currentUser.role === "owner" ? "inline-block" : "none";
             });
+            document.getElementById("createTransactionButton").style.display = "none";
         }
 
         async function completePendingMembership(code, fullName = "") {

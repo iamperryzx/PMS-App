@@ -182,16 +182,20 @@
 
         .room-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-width: 0; margin-bottom: 4px; }
         .room-name { flex: 0 1 auto; min-width: 0; font-size: 16px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
-        .room-category { display: block; width: fit-content; max-width: 100%; margin-bottom: 8px; overflow-wrap: anywhere; font-size: 11px; color: var(--text-muted); background: #f1f5f9; padding: 3px 6px; border-radius: 4px; }
-        .room-floor-label { display: block; margin: -4px 0 7px; color: #64748b; font-size: 11px; }
         .room-drag-handle { display: none; flex: 0 0 auto; padding: 2px 6px; border: 1px solid #d5d0c6; border-radius: 5px; background: #fffefa; color: #536174; cursor: grab; touch-action: none; user-select: none; }
         .room-grid.is-sorting .room-drag-handle { display: inline-flex; }
         .room-grid.is-sorting .room-drag-handle:active { cursor: grabbing; }
         .room-card.dragging-room { opacity: .5; }
-        .room-floor-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; flex-wrap: wrap; }
-        .room-floor-filters, .room-floor-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .room-floor-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; width: 100%; flex-wrap: wrap; }
+        .room-floor-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .room-sort-hint { color: var(--text-muted); font-size: 12px; }
-        .room-floor-target.drag-over { outline: 2px dashed var(--success); outline-offset: 2px; background: #e1f1e4; }
+        .room-floor-groups { display: grid; gap: 20px; }
+        .room-floor-section { min-width: 0; padding-top: 12px; border-top: 2px solid #d8d0c0; }
+        .room-floor-section.drag-over { border-top-color: var(--success); background: rgba(225,241,228,.45); }
+        .room-floor-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; padding: 0 2px; color: #34445a; font-size: 15px; font-weight: 700; }
+        .room-floor-heading small { margin-left: 6px; color: var(--text-muted); font-size: 12px; font-weight: 500; }
+        .room-floor-delete { flex: 0 0 auto; padding: 4px 9px; border: 1px solid #e6caca; border-radius: 6px; background: #fff7f7; color: #a64d4d; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .room-floor-delete:hover { background: #fce8e8; }
         .room-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         .empty .room-badge { background: #f1f5f9; color: var(--text-muted); }
         .occupied .room-badge { background: #d1fae5; color: #065f46; }
@@ -377,7 +381,6 @@
         .room-card:hover { border-color: #cdbb92; box-shadow: 0 12px 24px rgba(38,45,54,0.09); }
         .room-card.empty { background: #fffefa; border-color: #e5dfd3; }
         .room-card.occupied { background: #c6e8cd; border-color: #73ad81; }
-        .room-category { color: #756644; background: #f1ecdf; }
         .occupied .room-badge { background: #dcebe0; color: #34674f; }
         .room-price-tag { color: #98644b; }
         .custom-table { border-spacing: 0; }
@@ -396,13 +399,11 @@
         .sub-tab-btn { padding: 7px 10px; color: #697689; transition: background-color 0.18s ease, color 0.18s ease; }
         .sub-tab-btn:hover { background: #f3f0e9; color: #34445a; }
         .sub-tab-btn.active { color: #25364a; background: #ebe6da; }
-        .room-category { color: #756644; background: #f1ecdf; }
         .room-card.occupied { color: #254a32; }
         .room-card.occupied:hover { border-color: #58946a; }
         .room-card.occupied .room-details { color: #456b50; border-top-color: rgba(57,120,97,.28); }
         .room-card.occupied .room-badge { background: #a9d8b3; color: #205a32; }
         .room-card.occupied .room-price-tag { color: #8b4e34; }
-        .room-floor-filters .btn-filter.drag-over { outline: 2px dashed var(--success); outline-offset: 2px; }
         .modal { background: rgba(16,25,38,0.58); backdrop-filter: blur(5px); }
         .modal-content { width: min(680px, calc(100vw - 32px)); border: 1px solid #e9e1d1; border-radius: 16px; box-shadow: 0 24px 70px rgba(10,18,28,0.24); }
         .modal-header { color: #2c3d52; padding-bottom: 12px; border-bottom: 1px solid #eee8dd; }
@@ -651,16 +652,15 @@
                     <div class="toolbar">
                         <div class="filters" id="categoryFilterContainer"></div>
                         <div class="room-floor-toolbar">
-                            <div class="room-floor-filters" id="roomFloorFilterContainer"></div>
                             <div class="room-floor-actions">
-                                <span id="roomSortHint" class="room-sort-hint" style="display:none;">Giữ biểu tượng ⠿ trên phòng và kéo thả vào tầng muốn chuyển.</span>
+                                <span id="roomSortHint" class="room-sort-hint" style="display:none;">Kéo biểu tượng ⠿ trên phòng vào khu vực tầng.</span>
                                 <button id="roomSortButton" class="btn-modal btn-cancel owner-only" type="button" style="display:none; padding:7px 12px;" onclick="toggleRoomSorting()">↕️ Sắp xếp</button>
                                 <button id="addFloorButton" class="btn-modal btn-confirm owner-only" type="button" style="display:none; padding:7px 12px;" onclick="addRoomFloor()">+ Thêm tầng</button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="room-grid" id="roomGrid"></div>
+                    <div class="room-floor-groups" id="roomGrid"></div>
                 </div>
 
             </div>
@@ -1176,7 +1176,6 @@
         let hotelInfo = {};
         let currentActiveRoomId = null;
         let currentFilter = "Tất cả";
-        let currentFloorFilter = "Tất cả tầng";
         let isRoomSorting = false;
         let viewingInvoiceId = null;
         let appDialogResolver = null;
@@ -1321,12 +1320,7 @@
             categories = Array.isArray(state.categories) ? state.categories : [];
             hotelInfo = state.hotelInfo && typeof state.hotelInfo === "object" ? state.hotelInfo : {};
             hotelInfo.roomFloors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
-            if (currentFloorFilter !== "Tất cả tầng" && currentFloorFilter !== "Chưa xếp tầng" &&
-                !hotelInfo.roomFloors.includes(currentFloorFilter)) {
-                currentFloorFilter = "Tất cả tầng";
-            }
             renderCategoryFilters();
-            renderRoomFloorFilters();
             renderRooms();
             renderDashboardInvoices();
             renderTransactions();
@@ -1543,7 +1537,6 @@
             if (!branches.some(branch => branch.id === id)) return;
             currentBranch = id;
             currentFilter = "Tất cả";
-            currentFloorFilter = "Tất cả tầng";
             isRoomSorting = false;
             document.getElementById("currentBranchDisplay").innerText = branches.find(branch => branch.id === id).name;
             document.getElementById("branchScreen").style.display = "none";
@@ -2033,47 +2026,10 @@
             if (sortHint) sortHint.style.display = isOwner && isRoomSorting ? "inline" : "none";
         }
 
-        function renderRoomFloorFilters() {
-            const container = document.getElementById("roomFloorFilterContainer");
-            if (!container) return;
-            container.replaceChildren();
-            const floors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
-            if (!floors.length && !isRoomSorting) {
-                updateRoomSortControls();
-                return;
-            }
-            const filters = [
-                { label: "Tất cả tầng", value: "Tất cả tầng" },
-                { label: "Chưa xếp tầng", value: "Chưa xếp tầng" },
-                ...floors.map(floor => ({ label: floor, value: floor }))
-            ];
-            filters.forEach(({ label, value }) => {
-                const button = document.createElement("button");
-                button.type = "button";
-                button.className = `btn-filter room-floor-target ${currentFloorFilter === value ? "active" : ""}`;
-                button.textContent = label;
-                button.onclick = () => {
-                    currentFloorFilter = value;
-                    renderRoomFloorFilters();
-                    renderRooms();
-                };
-                button.ondragover = event => {
-                    if (!isRoomSorting || currentUser?.role !== "owner") return;
-                    event.preventDefault();
-                    button.classList.add("drag-over");
-                };
-                button.ondragleave = () => button.classList.remove("drag-over");
-                button.ondrop = event => assignRoomToFloor(event, value);
-                container.appendChild(button);
-            });
-            updateRoomSortControls();
-        }
-
         function toggleRoomSorting() {
             if (currentUser?.role !== "owner") return;
             isRoomSorting = !isRoomSorting;
             updateRoomSortControls();
-            renderRoomFloorFilters();
             renderRooms();
         }
 
@@ -2086,20 +2042,28 @@
                 await showNotice("Tên tầng không được dài quá 40 ký tự.");
                 return;
             }
-            if (["tất cả tầng", "chưa xếp tầng"].includes(floorName.toLocaleLowerCase("vi"))) {
-                await showNotice("Tên tầng này được dành riêng cho bộ lọc. Vui lòng nhập tên khác.");
-                return;
-            }
             hotelInfo.roomFloors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
             if (hotelInfo.roomFloors.some(floor => floor.toLocaleLowerCase("vi") === floorName.toLocaleLowerCase("vi"))) {
                 await showNotice("Tên tầng này đã tồn tại.");
                 return;
             }
             hotelInfo.roomFloors.push(floorName);
-            currentFloorFilter = "Tất cả tầng";
             saveData();
-            renderRoomFloorFilters();
             renderRooms();
+        }
+
+        async function deleteRoomFloor(floorName) {
+            if (currentUser?.role !== "owner") return;
+            const assignedRooms = rooms.filter(room => room.floor === floorName);
+            const confirmation = assignedRooms.length
+                ? `Xóa tầng "${floorName}"? ${assignedRooms.length} phòng đang thuộc tầng này sẽ chuyển sang "Chưa xếp tầng".`
+                : `Xóa tầng "${floorName}"?`;
+            if (!hotelInfo.roomFloors?.includes(floorName) || !await confirmAction(confirmation, "Xóa tầng", true)) return;
+            hotelInfo.roomFloors = hotelInfo.roomFloors.filter(floor => floor !== floorName);
+            assignedRooms.forEach(room => { delete room.floor; });
+            saveData();
+            renderRooms();
+            if (document.getElementById("roomSettings").classList.contains("active")) renderRoomSettingsTable();
         }
 
         function assignRoomToFloor(event, floor) {
@@ -2110,9 +2074,9 @@
             const roomId = event.dataTransfer?.getData("text/plain");
             const room = rooms.find(item => String(item.id) === roomId);
             if (!room) return;
-            if (floor === "Tất cả tầng") return;
-            if (floor === "Chưa xếp tầng") delete room.floor;
-            else room.floor = floor;
+            if (floor === null) delete room.floor;
+            else if (floor) room.floor = floor;
+            else return;
             saveData();
             renderRooms();
             if (document.getElementById("roomSettings").classList.contains("active")) renderRoomSettingsTable();
@@ -2143,17 +2107,13 @@
 
         function renderRooms(filterCat = currentFilter) {
             currentFilter = filterCat;
-            const grid = document.getElementById("roomGrid");
-            grid.innerHTML = "";
-            grid.classList.toggle("is-sorting", isRoomSorting && currentUser?.role === "owner");
+            const container = document.getElementById("roomGrid");
+            container.replaceChildren();
             const categoryFiltered = filterCat === "Tất cả" ? rooms : rooms.filter(room => room.category === filterCat);
-            const floorFiltered = categoryFiltered.filter(room => {
-                if (currentFloorFilter === "Chưa xếp tầng") return !room.floor;
-                return currentFloorFilter === "Tất cả tầng" || room.floor === currentFloorFilter;
-            });
-            const filtered = sortRoomsByNumber(floorFiltered);
-            
-            filtered.forEach(room => {
+            const visibleRooms = sortRoomsByNumber(categoryFiltered);
+            const isOwnerSorting = isRoomSorting && currentUser?.role === "owner";
+
+            const addRoomCard = (room, grid) => {
                 const card = document.createElement("div");
                 card.className = `room-card ${room.status}`;
                 card.onclick = () => handleRoomClick(room.id);
@@ -2181,8 +2141,6 @@
                         <span class="room-name">${escapeHTML(room.name)}</span>
                         ${isRoomSorting && currentUser?.role === "owner" ? `<button class="room-drag-handle" type="button" draggable="true" aria-label="Giữ và kéo phòng ${escapeHTML(room.name)} sang tầng khác" title="Giữ và kéo để chuyển tầng">⠿</button>` : ""}
                     </div>
-                    <span class="room-category">${escapeHTML(room.category)}</span>
-                    ${room.floor ? `<span class="room-floor-label">Tầng: ${escapeHTML(room.floor)}</span>` : ""}
                     <div class="room-badge">${room.status === 'empty' ? '⚪ Đang trống' : '🟢 Đang ở'}</div>
                     ${detailsHTML}
                 `;
@@ -2193,9 +2151,68 @@
                     dragHandle.onpointerdown = event => event.stopPropagation();
                 }
                 grid.appendChild(card);
-            });
+            };
+
+            const createRoomGrid = roomsInFloor => {
+                const grid = document.createElement("div");
+                grid.className = `room-grid${isOwnerSorting ? " is-sorting" : ""}`;
+                roomsInFloor.forEach(room => addRoomCard(room, grid));
+                return grid;
+            };
+
+            const configuredFloors = Array.isArray(hotelInfo.roomFloors) ? hotelInfo.roomFloors : [];
+            const floorNames = [...new Set([...configuredFloors, ...visibleRooms.map(room => room.floor).filter(Boolean)])];
+            if (!floorNames.length && !isOwnerSorting) {
+                container.appendChild(createRoomGrid(visibleRooms));
+            } else {
+                floorNames.forEach(floorName => {
+                    const floorRooms = visibleRooms.filter(room => room.floor === floorName);
+                    addRoomFloorSection(container, floorName, floorRooms, true, isOwnerSorting, createRoomGrid);
+                });
+                const unassignedRooms = visibleRooms.filter(room => !room.floor);
+                if (unassignedRooms.length || isOwnerSorting) {
+                    addRoomFloorSection(container, null, unassignedRooms, false, isOwnerSorting, createRoomGrid);
+                }
+            }
             updateStats();
             updateLiveOccupancyDisplay();
+        }
+
+        function addRoomFloorSection(container, floorName, floorRooms, canDelete, isOwnerSorting, createRoomGrid) {
+            const section = document.createElement("section");
+            section.className = "room-floor-section";
+            if (isOwnerSorting) {
+                section.ondragover = event => {
+                    event.preventDefault();
+                    section.classList.add("drag-over");
+                };
+                section.ondragleave = event => {
+                    if (!section.contains(event.relatedTarget)) section.classList.remove("drag-over");
+                };
+                section.ondrop = event => assignRoomToFloor(event, floorName);
+            }
+
+            const heading = document.createElement("div");
+            heading.className = "room-floor-heading";
+            const title = document.createElement("span");
+            title.textContent = floorName || "Chưa xếp tầng";
+            const count = document.createElement("small");
+            count.textContent = `${floorRooms.length} phòng`;
+            title.appendChild(count);
+            heading.appendChild(title);
+            if (canDelete && currentUser?.role === "owner") {
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "room-floor-delete";
+                remove.textContent = "Xóa tầng";
+                remove.onclick = event => {
+                    event.stopPropagation();
+                    deleteRoomFloor(floorName);
+                };
+                heading.appendChild(remove);
+            }
+            section.append(heading, createRoomGrid(floorRooms));
+            container.appendChild(section);
         }
 
         function handleRoomClick(id) {
@@ -2634,6 +2651,10 @@
             const overnightPrice = parseFloat(document.getElementById("catOvernightPrice").value);
 
             if (!name) { await showNotice("Vui lòng nhập tên hạng phòng!"); return; }
+            if (categories.some(category => category.name !== editName && category.name.toLocaleLowerCase("vi") === name.toLocaleLowerCase("vi"))) {
+                await showNotice("Tên hạng phòng này đã tồn tại.");
+                return;
+            }
             if (!await confirmAction(`Xác nhận ${editName ? "cập nhật" : "thêm"} hạng phòng "${name}"?`, "Lưu hạng phòng")) return;
 
             let lateRules = [];
@@ -2649,7 +2670,17 @@
 
             if (editName) {
                 const idx = categories.findIndex(c => c.name === editName);
+                if (idx < 0) {
+                    await showNotice("Không tìm thấy hạng phòng cần cập nhật. Vui lòng tải lại dữ liệu.");
+                    return;
+                }
                 categories[idx] = newCat;
+                if (name !== editName) {
+                    rooms.forEach(room => {
+                        if (room.category === editName) room.category = name;
+                    });
+                    if (currentFilter === editName) currentFilter = name;
+                }
             } else {
                 categories.push(newCat);
             }
@@ -2657,6 +2688,7 @@
             saveData();
             renderCategorySettingsTable();
             renderCategoryFilters();
+            renderRooms();
             closeModal('categoryModal');
         }
 

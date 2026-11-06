@@ -287,7 +287,7 @@
             border-radius: var(--radius-md);
             box-shadow: 0 1px 2px rgba(0,0,0,0.03);
         }
-        .late-rule-row input[type="time"], 
+        .late-rule-row input[type="time"],
         .late-rule-row input[type="number"],
         .late-rule-row select {
             padding: 8px 10px;
@@ -297,16 +297,18 @@
             outline: none;
             width: 100%;
         }
-        .late-rule-row { display: grid; grid-template-columns: minmax(150px, 1.15fr) minmax(120px, .75fr) minmax(140px, 1fr) 32px; }
-        .late-rule-row .late-rule-description { grid-column: 1 / 4; margin-top: -4px; color: var(--text-muted); font-size: 11px; line-height: 1.4; }
+        .late-rule-row { display: grid; grid-template-columns: minmax(140px, 1.1fr) repeat(2, minmax(105px, .75fr)) minmax(120px, .85fr) 32px; }
+        .late-rule-time-field { min-width: 0; }
+        .late-rule-time-field label { display: block; margin-bottom: 4px; color: var(--text-muted); font-size: 11px; }
+        .late-rule-row .late-rule-description { grid-column: 1 / 5; margin-top: -4px; color: var(--text-muted); font-size: 11px; line-height: 1.4; }
         .late-checkout-settings { margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #f8f6f1; }
         .late-checkout-settings .form-group { margin: 0; max-width: 240px; }
         .late-checkout-hint { margin-top: 10px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
         @media (max-width: 620px) {
             .late-rule-row { grid-template-columns: minmax(0, 1fr) 32px; }
-            .late-rule-row .late-rule-type, .late-rule-row .late-rule-end, .late-rule-row .late-rule-amount { grid-column: 1; }
+            .late-rule-row .late-rule-type, .late-rule-row .late-rule-time-field, .late-rule-row .late-rule-amount { grid-column: 1; }
             .late-rule-row .late-rule-description { grid-column: 1 / -1; }
-            .late-rule-row .btn-remove-rule { grid-column: 2; grid-row: 1; }
+            .late-rule-row .btn-remove-rule { grid-column: 2; grid-row: 2; }
         }
         .btn-remove-rule {
             background: #fef2f2;
@@ -1022,7 +1024,7 @@
                     <label for="catCheckoutTime">Giờ Check-out chuẩn</label>
                     <input type="time" id="catCheckoutTime" value="12:00">
                 </div>
-                <p class="late-checkout-hint">Các mốc được tính lần lượt từ giờ chuẩn; khi sang khung mới, phụ thu của khung trước được thay bằng mức của khung hiện tại. Khung cộng đêm phải ở cuối và chu kỳ bắt đầu lại vào giờ chuẩn ngày tiếp theo.</p>
+                <p class="late-checkout-hint">Mỗi khung có giờ bắt đầu và kết thúc; các khung phải nối tiếp nhau từ giờ check-out chuẩn. Khi sang khung mới, phí khung trước được thay bằng phí khung hiện tại. Khung cộng đêm phải ở cuối và kết thúc tại giờ check-out chuẩn để bắt đầu chu kỳ mới.</p>
             </div>
 
             <div id="lateRulesContainer" style="max-height: 320px; overflow-y: auto; margin-bottom: 15px; padding-right: 4px;"></div>
@@ -2151,31 +2153,51 @@
         /* TÍNH TIỀN PHÒNG */
         function getLateCheckoutRules(category) {
             const rules = Array.isArray(category?.lateRules) ? category.lateRules : [];
+            const checkoutTime = category?.checkoutTime || "12:00";
+            let previousEnd = checkoutTime;
             if (!rules.some(rule => rule.type)) {
                 if (!rules.length) return [];
-                return [
-                    ...rules.map(rule => ({ type: "fixed", end: rule.end, amount: Number(rule.amount) || 0 })),
-                    { type: "overnight" }
-                ];
+                const legacyRules = rules.map(rule => {
+                    const normalizedRule = {
+                        type: "fixed",
+                        start: rule.start || previousEnd,
+                        end: rule.end,
+                        amount: Number(rule.amount) || 0
+                    };
+                    previousEnd = normalizedRule.end || previousEnd;
+                    return normalizedRule;
+                });
+                return [...legacyRules, { type: "overnight", start: previousEnd, end: checkoutTime }];
             }
-            return rules.map(rule => ({
-                type: rule.type,
-                end: rule.end,
-                amount: Number(rule.amount) || 0
-            }));
+            return rules.map(rule => {
+                const normalizedRule = {
+                    type: rule.type,
+                    start: rule.start || previousEnd,
+                    end: rule.end || (rule.type === "overnight" ? checkoutTime : ""),
+                    amount: Number(rule.amount) || 0
+                };
+                previousEnd = normalizedRule.end || previousEnd;
+                return normalizedRule;
+            });
         }
 
-        function getLateCheckoutBoundaryOffset(checkoutTime, endTime, previousOffset = 0) {
-            if (!/^\d{2}:\d{2}$/.test(checkoutTime) || !/^\d{2}:\d{2}$/.test(endTime)) return null;
+        function getLateCheckoutRangeOffsets(checkoutTime, startTime, endTime, previousOffset = 0) {
+            if (![checkoutTime, startTime, endTime].every(time => /^\d{2}:\d{2}$/.test(time))) return null;
             const [checkoutHour, checkoutMinute] = checkoutTime.split(":").map(Number);
+            const [startHour, startMinute] = startTime.split(":").map(Number);
             const [endHour, endMinute] = endTime.split(":").map(Number);
-            if (checkoutHour > 23 || checkoutMinute > 59 || endHour > 23 || endMinute > 59) return null;
+            if ([checkoutHour, startHour, endHour].some(hour => hour > 23) ||
+                [checkoutMinute, startMinute, endMinute].some(minute => minute > 59)) return null;
             const checkoutMinutes = checkoutHour * 60 + checkoutMinute;
+            const startMinutes = startHour * 60 + startMinute;
             const endMinutes = endHour * 60 + endMinute;
-            let offset = (endMinutes - checkoutMinutes + 1440) % 1440;
-            if (offset === 0) offset = 1440;
-            while (offset <= previousOffset) offset += 1440;
-            return offset <= 1440 ? offset : null;
+            let startOffset = (startMinutes - checkoutMinutes + 1440) % 1440;
+            if (startOffset < previousOffset) startOffset += 1440;
+            let endOffset = (endMinutes - checkoutMinutes + 1440) % 1440;
+            if (endOffset === 0) endOffset = 1440;
+            if (endOffset <= startOffset) endOffset += 1440;
+            if (startOffset > 1440 || endOffset > 1440) return null;
+            return { startOffset, endOffset };
         }
 
         function calculateLateCheckoutCharge(room, category, now = new Date()) {
@@ -2199,36 +2221,35 @@
             if (!rules.length) return { surcharge: 0, stage: "", nights: 0 };
             const schedule = [];
             let previousOffset = 0;
-            for (const rule of rules) {
+            for (let index = 0; index < rules.length; index += 1) {
+                const rule = rules[index];
                 if (rule.type === "overnight") {
-                    if (schedule.length !== rules.length - 1) return { surcharge: 0, stage: "", nights: 0 };
-                    schedule.push({ ...rule, startOffset: previousOffset });
-                    continue;
+                    if (index !== rules.length - 1) return { surcharge: 0, stage: "", nights: 0 };
+                } else if (rule.type !== "hourly" && rule.type !== "fixed") {
+                    return { surcharge: 0, stage: "", nights: 0 };
                 }
-                if (rule.type !== "hourly" && rule.type !== "fixed") return { surcharge: 0, stage: "", nights: 0 };
-                const endOffset = getLateCheckoutBoundaryOffset(checkoutTime, rule.end, previousOffset);
-                if (endOffset === null) return { surcharge: 0, stage: "", nights: 0 };
-                schedule.push({ ...rule, endOffset });
-                previousOffset = endOffset;
+                const offsets = getLateCheckoutRangeOffsets(checkoutTime, rule.start, rule.end, previousOffset);
+                if (!offsets || offsets.startOffset !== previousOffset) return { surcharge: 0, stage: "", nights: 0 };
+                if (rule.type === "overnight" && offsets.endOffset !== 1440) return { surcharge: 0, stage: "", nights: 0 };
+                schedule.push({ ...rule, ...offsets });
+                previousOffset = offsets.endOffset;
             }
 
             const overnightRule = schedule.find(rule => rule.type === "overnight");
             const nights = overnightRule && elapsedMinutes >= overnightRule.startOffset
                 ? Math.floor((elapsedMinutes - overnightRule.startOffset) / 1440) + 1
                 : 0;
-            const cycleStart = nights && elapsedMinutes >= nights * 1440
-                ? nights * 1440
-                : Math.max(0, nights - 1) * 1440;
             const cycleMinutes = overnightRule
-                ? elapsedMinutes - cycleStart
+                ? elapsedMinutes % 1440
                 : Math.min(elapsedMinutes, 1440);
-            const activeRule = schedule.find(rule => rule.type !== "overnight" && cycleMinutes < rule.endOffset) ||
-                (overnightRule && cycleMinutes >= overnightRule.startOffset ? overnightRule : schedule[schedule.length - 1]);
+            const activeRule = schedule.find(rule =>
+                cycleMinutes >= rule.startOffset && cycleMinutes < rule.endOffset
+            ) || (cycleMinutes >= schedule[schedule.length - 1].endOffset ? schedule[schedule.length - 1] : null);
 
             let stageCharge = 0;
             let stage = "";
             if (activeRule?.type === "hourly") {
-                const billableHours = Math.ceil(cycleMinutes / 60);
+                const billableHours = Math.ceil((cycleMinutes - activeRule.startOffset) / 60);
                 if (billableHours > 0) {
                     stageCharge = Number(category.firstHourPrice || 0) +
                         Math.max(0, billableHours - 1) * Number(category.nextHourPrice || 0);
@@ -2951,25 +2972,27 @@
                 const isOvernight = type === "overnight";
                 row.querySelector(".late-rule-type").querySelector('option[value="overnight"]').disabled =
                     !isOvernight && index !== rows.length - 1;
-                row.querySelector(".late-rule-end").hidden = isOvernight;
                 row.querySelector(".late-rule-amount").hidden = type !== "fixed";
                 const descriptions = {
-                    hourly: "Từ mốc trước đến mốc này: tính theo số giờ trễ (làm tròn lên) và bảng giá giờ của hạng phòng.",
-                    fixed: "Từ mốc trước đến mốc này: thay mức phụ thu trước bằng số tiền cố định bên cạnh.",
-                    overnight: "Từ mốc cuối: cộng thêm một giá qua đêm; lặp chu kỳ từ giờ checkout chuẩn mỗi ngày."
+                    hourly: "Trong khoảng giờ này: tính theo số giờ trễ (làm tròn lên) và bảng giá giờ của hạng phòng.",
+                    fixed: "Trong khoảng giờ này: thay mức phụ thu trước bằng số tiền cố định bên cạnh.",
+                    overnight: "Trong khoảng giờ này: cộng thêm một giá qua đêm; khung phải kết thúc vào giờ checkout chuẩn ngày hôm sau."
                 };
                 row.querySelector(".late-rule-description").textContent = descriptions[type];
                 row.querySelector(".late-rule-stage").textContent = `Khung ${index + 1}`;
             });
         }
 
-        function getSuggestedLateRuleEnd() {
+        function getSuggestedLateRuleStart() {
             const rows = [...document.querySelectorAll("#lateRulesContainer > .late-rule-row")]
                 .filter(row => row.querySelector(".late-rule-type").value !== "overnight");
-            const previousEnd = rows.length
+            return rows.length
                 ? rows[rows.length - 1].querySelector(".late-rule-end").value
                 : document.getElementById("catCheckoutTime").value || "12:00";
-            const [hour, minute] = previousEnd.split(":").map(Number);
+        }
+
+        function getSuggestedLateRuleEnd(startTime = getSuggestedLateRuleStart()) {
+            const [hour, minute] = startTime.split(":").map(Number);
             const nextMinutes = (hour * 60 + minute + 120) % 1440;
             return `${String(Math.floor(nextMinutes / 60)).padStart(2, "0")}:${String(nextMinutes % 60).padStart(2, "0")}`;
         }
@@ -2986,7 +3009,7 @@
             row.className = "late-rule-row";
 
             const typeSelect = document.createElement("select");
-            typeSelect.className = "late-rule-type late-rule-type";
+            typeSelect.className = "late-rule-type";
             typeSelect.setAttribute("aria-label", "Loại khung phụ thu");
             [
                 ["hourly", "Tính theo giờ"],
@@ -2999,13 +3022,32 @@
                 typeSelect.appendChild(option);
             });
             typeSelect.value = type;
-            typeSelect.addEventListener("change", updateLateRuleRows);
 
             const endTime = document.createElement("input");
             endTime.type = "time";
             endTime.className = "late-rule-end";
-            endTime.value = rule.end || getSuggestedLateRuleEnd();
-            endTime.setAttribute("aria-label", "Mốc kết thúc khung");
+            endTime.value = rule.end || (type === "overnight"
+                ? document.getElementById("catCheckoutTime").value || "12:00"
+                : getSuggestedLateRuleEnd(rule.start || getSuggestedLateRuleStart()));
+            endTime.setAttribute("aria-label", "Giờ kết thúc khung");
+
+            const startTime = document.createElement("input");
+            startTime.type = "time";
+            startTime.className = "late-rule-start";
+            startTime.value = rule.start || getSuggestedLateRuleStart();
+            startTime.setAttribute("aria-label", "Giờ bắt đầu khung");
+
+            const startField = document.createElement("div");
+            startField.className = "late-rule-time-field";
+            const startLabel = document.createElement("label");
+            startLabel.textContent = "Từ giờ";
+            startField.append(startLabel, startTime);
+
+            const endField = document.createElement("div");
+            endField.className = "late-rule-time-field";
+            const endLabel = document.createElement("label");
+            endLabel.textContent = "Đến giờ";
+            endField.append(endLabel, endTime);
 
             const amount = document.createElement("input");
             amount.type = "number";
@@ -3032,9 +3074,16 @@
             stage.className = "late-rule-stage";
             stage.style.gridColumn = "1 / -1";
 
-            row.append(stage, typeSelect, endTime, amount, removeButton, description);
+            row.append(stage, typeSelect, startField, endField, amount, removeButton, description);
             const rolloverRow = existingRows.find(item => item.querySelector(".late-rule-type").value === "overnight");
             container.insertBefore(row, rolloverRow || null);
+            if (rolloverRow && !rule.start) rolloverRow.querySelector(".late-rule-start").value = endTime.value;
+            typeSelect.addEventListener("change", () => {
+                if (typeSelect.value === "overnight") {
+                    endTime.value = document.getElementById("catCheckoutTime").value || "12:00";
+                }
+                updateLateRuleRows();
+            });
             updateLateRuleRows();
         }
 
@@ -3052,9 +3101,10 @@
                 const lateRulesText = [
                     `Checkout chuẩn: ${escapeHTML(cat.checkoutTime || "12:00")}`,
                     ...lateRules.map((rule, index) => {
-                        if (rule.type === "overnight") return `• Khung ${index + 1}: Cộng ${Number(cat.overnightPrice || 0).toLocaleString("vi-VN")}đ mỗi chu kỳ`;
-                        if (rule.type === "hourly") return `• Khung ${index + 1}: Tính giờ đến ${escapeHTML(rule.end || "")}`;
-                        return `• Khung ${index + 1}: Cố định ${Number(rule.amount || 0).toLocaleString("vi-VN")}đ đến ${escapeHTML(rule.end || "")}`;
+                        const range = `${escapeHTML(rule.start || "")}–${escapeHTML(rule.end || "")}`;
+                        if (rule.type === "overnight") return `• Khung ${index + 1} (${range}): Cộng ${Number(cat.overnightPrice || 0).toLocaleString("vi-VN")}đ mỗi chu kỳ`;
+                        if (rule.type === "hourly") return `• Khung ${index + 1} (${range}): Tính giờ`;
+                        return `• Khung ${index + 1} (${range}): Cố định ${Number(rule.amount || 0).toLocaleString("vi-VN")}đ`;
                     })
                 ].join("<br>");
 
@@ -3079,11 +3129,11 @@
             document.getElementById("catNameInput").value = "";
             document.getElementById("lateRulesContainer").innerHTML = "";
             document.getElementById("catCheckoutTime").value = "12:00";
-            addLateRuleRow({ type: "hourly", end: "14:00" });
+            addLateRuleRow({ type: "hourly", start: "12:00", end: "14:00" });
             const firstHourPrice = Number(document.getElementById("catFirstHourPrice").value) || 0;
             const nextHourPrice = Number(document.getElementById("catNextHourPrice").value) || 0;
-            addLateRuleRow({ type: "fixed", end: "18:00", amount: firstHourPrice + nextHourPrice });
-            addLateRuleRow({ type: "overnight" });
+            addLateRuleRow({ type: "fixed", start: "14:00", end: "18:00", amount: firstHourPrice + nextHourPrice });
+            addLateRuleRow({ type: "overnight", start: "18:00", end: "12:00" });
             document.getElementById("categoryModal").style.display = "flex";
         }
 
@@ -3128,37 +3178,37 @@
             const rows = [...document.querySelectorAll("#lateRulesContainer > .late-rule-row")];
             const lateRules = [];
             let previousOffset = 0;
-            let overnightIndex = -1;
             for (let index = 0; index < rows.length; index += 1) {
                 const row = rows[index];
                 const type = row.querySelector(".late-rule-type").value;
+                const start = row.querySelector(".late-rule-start").value;
+                const end = row.querySelector(".late-rule-end").value;
+                const offsets = getLateCheckoutRangeOffsets(checkoutTime, start, end, previousOffset);
+                if (!offsets || offsets.startOffset !== previousOffset) {
+                    await showNotice(`Khung ${index + 1} cần nối tiếp khung trước. Hãy chọn giờ bắt đầu ${index ? "trùng giờ kết thúc của khung trước" : "bằng giờ check-out chuẩn"} và một giờ kết thúc hợp lệ trong chu kỳ.`);
+                    return;
+                }
                 if (type === "overnight") {
-                    if (overnightIndex >= 0 || index !== rows.length - 1 || !lateRules.length) {
-                        await showNotice("Khung cộng thêm một đêm chỉ được có một khung và phải nằm cuối danh sách.");
+                    if (index !== rows.length - 1 || !lateRules.length || offsets.endOffset !== 1440) {
+                        await showNotice("Khung cộng thêm một đêm phải nằm cuối danh sách và kết thúc vào giờ check-out chuẩn ngày hôm sau.");
                         return;
                     }
-                    overnightIndex = index;
-                    lateRules.push({ type: "overnight" });
+                    lateRules.push({ type: "overnight", start, end });
+                    previousOffset = offsets.endOffset;
                     continue;
                 }
 
-                const end = row.querySelector(".late-rule-end").value;
-                const offset = getLateCheckoutBoundaryOffset(checkoutTime, end, previousOffset);
-                if (offset === null) {
-                    await showNotice(`Mốc kết thúc của Khung ${index + 1} không hợp lệ hoặc không theo thứ tự thời gian.`);
-                    return;
-                }
                 if (type === "fixed") {
                     const amount = Number(row.querySelector(".late-rule-amount").value);
                     if (!Number.isFinite(amount) || amount < 0) {
                         await showNotice(`Vui lòng nhập phí cố định hợp lệ cho Khung ${index + 1}.`);
                         return;
                     }
-                    lateRules.push({ type, end, amount });
+                    lateRules.push({ type, start, end, amount });
                 } else {
-                    lateRules.push({ type: "hourly", end });
+                    lateRules.push({ type: "hourly", start, end });
                 }
-                previousOffset = offset;
+                previousOffset = offsets.endOffset;
             }
 
             if (!await confirmAction(`Xác nhận ${editName ? "cập nhật" : "thêm"} hạng phòng "${name}"?`, "Lưu hạng phòng")) return;

@@ -1062,7 +1062,7 @@
                     <label for="catCheckoutTime">Giờ Check-out chuẩn</label>
                     <input type="time" id="catCheckoutTime" value="12:00">
                 </div>
-                <p class="late-checkout-hint">Mỗi khung có giờ bắt đầu và kết thúc; các khung phải nối tiếp nhau từ giờ check-out chuẩn. Khi sang khung mới, phí khung trước được thay bằng phí khung hiện tại. Khung cộng đêm phải ở cuối và kết thúc tại giờ check-out chuẩn để bắt đầu chu kỳ mới.</p>
+                <p class="late-checkout-hint">Các khung phải nối tiếp nhau từ giờ check-out chuẩn. Khi đến giờ bắt đầu khung cộng đêm, hệ thống cộng đúng một đêm và bỏ phụ thu của các khung trước. Đến 00:00 bắt đầu chu kỳ mới, giữ nguyên khung đã cài đặt và dùng giờ check-out chuẩn vào ngày hôm sau.</p>
             </div>
 
             <div id="lateRulesContainer" style="max-height: 320px; overflow-y: auto; margin-bottom: 15px; padding-right: 4px;"></div>
@@ -2320,6 +2320,54 @@
                 previousOffset = offsets.endOffset;
             }
 
+            const overnightRule = schedule.find(rule => rule.type === "overnight");
+            if (overnightRule) {
+                let nights = 1;
+                let cycleCheckout = standardCheckout;
+
+                while (true) {
+                    const overnightAt = new Date(cycleCheckout);
+                    overnightAt.setMinutes(overnightAt.getMinutes() + overnightRule.startOffset);
+                    if (now < overnightAt) {
+                        const cycleMinutes = (now.getTime() - cycleCheckout.getTime()) / 60000;
+                        const activeRule = schedule.find(rule =>
+                            rule.type !== "overnight" &&
+                            cycleMinutes >= rule.startOffset &&
+                            cycleMinutes < rule.endOffset
+                        );
+                        let surcharge = 0;
+                        let stage = "";
+                        let type = "";
+
+                        if (activeRule?.type === "hourly") {
+                            const billableHours = Math.ceil((cycleMinutes - activeRule.startOffset) / 60);
+                            surcharge = Number.isFinite(Number(activeRule.hourlyPrice))
+                                ? billableHours * Number(activeRule.hourlyPrice)
+                                : Number(category.firstHourPrice || 0) +
+                                    Math.max(0, billableHours - 1) * Number(category.nextHourPrice || 0);
+                            stage = "Phụ thu checkout muộn";
+                            type = "hourly";
+                        } else if (activeRule?.type === "fixed") {
+                            surcharge = activeRule.amount;
+                            stage = "Phụ thu checkout muộn nửa ngày";
+                            type = "fixed";
+                        } else if (nights > 1) {
+                            stage = "overnight";
+                            type = "overnight";
+                        }
+
+                        return { surcharge: Math.max(0, surcharge), stage, type, nights };
+                    }
+
+                    nights += 1;
+                    const nextCycleStart = new Date(overnightAt);
+                    nextCycleStart.setHours(24, 0, 0, 0);
+                    cycleCheckout = new Date(nextCycleStart);
+                    cycleCheckout.setDate(cycleCheckout.getDate() + 1);
+                    cycleCheckout.setHours(checkoutHour, checkoutMinute, 0, 0);
+                }
+            }
+
             const cycleMinutes = (now.getTime() - cycleStart.getTime()) / 60000;
             const activeRule = schedule.find(rule => cycleMinutes >= rule.startOffset && cycleMinutes < rule.endOffset);
 
@@ -3118,17 +3166,18 @@
         /* KHUNG GIỜ PHỤ THU */
         function updateLateRuleRows() {
             const rows = [...document.querySelectorAll("#lateRulesContainer > .late-rule-row")];
+            const overnightRow = rows.find(row => row.querySelector(".late-rule-type").value === "overnight");
             rows.forEach((row, index) => {
                 const type = row.querySelector(".late-rule-type").value;
                 const isOvernight = type === "overnight";
                 row.querySelector(".late-rule-type").querySelector('option[value="overnight"]').disabled =
-                    !isOvernight && index !== rows.length - 1;
+                    !isOvernight && (index !== rows.length - 1 || Boolean(overnightRow));
                 row.querySelector(".late-rule-amount").hidden = type !== "fixed";
                 row.querySelector(".late-rule-hourly-price").hidden = type !== "hourly";
                 const descriptions = {
                     hourly: "Trong khoảng giờ này: đơn giá riêng của khung nhân số giờ trễ (làm tròn lên).",
                     fixed: "Trong khoảng giờ này: thay mức phụ thu trước bằng số tiền cố định bên cạnh.",
-                    overnight: "Trong khoảng giờ này: cộng thêm một giá qua đêm; khung phải kết thúc vào giờ checkout chuẩn ngày hôm sau."
+                    overnight: "Đến giờ bắt đầu khung: cộng 1 đêm và bỏ phụ thu trước; 00:00 bắt đầu chu kỳ mới."
                 };
                 row.querySelector(".late-rule-description").textContent = descriptions[type];
                 row.querySelector(".late-rule-stage").textContent = `Khung ${index + 1}`;

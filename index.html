@@ -2132,17 +2132,17 @@
             if (!name || !address) return;
             name.textContent = hotelInfo.name?.trim() || "Tên khách sạn / cơ sở chưa được thiết lập";
             const bankDetails = [
-                hotelInfo.bankName?.trim() && `Ngân hàng: ${hotelInfo.bankName.trim()}`,
-                hotelInfo.bankAccount?.trim() && `Số tài khoản: ${hotelInfo.bankAccount.trim()}`,
-                hotelInfo.bankAccountHolder?.trim() && `Chủ tài khoản: ${hotelInfo.bankAccountHolder.trim()}`
+                hotelInfo.bankName?.trim() && `<b>Ngân hàng:</b> ${escapeHTML(hotelInfo.bankName.trim())}`,
+                hotelInfo.bankAccount?.trim() && `<b>Số tài khoản:</b> ${escapeHTML(hotelInfo.bankAccount.trim())}`,
+                hotelInfo.bankAccountHolder?.trim() && `<b>Chủ tài khoản:</b> ${escapeHTML(hotelInfo.bankAccountHolder.trim())}`
             ].filter(Boolean);
-            bank.textContent = bankDetails.join(" - ");
+            bank.innerHTML = bankDetails.join(" - ");
             bank.style.display = bankDetails.length ? "block" : "none";
             address.textContent = hotelInfo.address?.trim() || "";
             address.style.display = hotelInfo.address?.trim() ? "block" : "none";
-            hotline.textContent = hotelInfo.hotline?.trim() ? `Số điện thoại: ${hotelInfo.hotline.trim()}` : "";
+            hotline.innerHTML = hotelInfo.hotline?.trim() ? `<b>Hotline:</b> ${escapeHTML(hotelInfo.hotline.trim())}` : "";
             hotline.style.display = hotelInfo.hotline?.trim() ? "block" : "none";
-            taxCode.textContent = hotelInfo.taxCode?.trim() ? `Mã số thuế: ${hotelInfo.taxCode.trim()}` : "";
+            taxCode.innerHTML = hotelInfo.taxCode?.trim() ? `<b>Mã số thuế:</b> ${escapeHTML(hotelInfo.taxCode.trim())}` : "";
             taxCode.style.display = hotelInfo.taxCode?.trim() ? "block" : "none";
         }
 
@@ -2389,7 +2389,6 @@
                     const nextCycleStart = new Date(overnightAt);
                     nextCycleStart.setHours(24, 0, 0, 0);
                     cycleCheckout = new Date(nextCycleStart);
-                    cycleCheckout.setDate(cycleCheckout.getDate() + 1);
                     cycleCheckout.setHours(checkoutHour, checkoutMinute, 0, 0);
                 }
             }

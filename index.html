@@ -633,6 +633,8 @@
                 <h1>🏨 PMS Enterprise Pro</h1>
                 <p id="dashboardHotelName">Tên khách sạn / cơ sở</p>
                 <p id="dashboardHotelAddress" style="display:none;"></p>
+                <p id="dashboardHotelHotline" style="display:none;"></p>
+                <p id="dashboardHotelTaxCode" style="display:none;"></p>
                 <button id="checkForUpdatesButton" class="update-check-button" type="button" style="display:none;" onclick="checkForApplicationUpdates()">↻ Kiểm tra cập nhật</button>
             </div>
             <div class="stats-group">
@@ -668,7 +670,7 @@
         <div class="nav-tabs">
             <button class="tab-btn active" onclick="switchTab('roomMap', this)">📌 Sơ đồ phòng & Lễ tân</button>
             <button class="tab-btn owner-only" onclick="switchTab('categorySettings', this)">🏷️ Quản lý Hạng phòng & Đa khung giờ</button>
-            <button class="tab-btn owner-only" onclick="switchTab('inventory', this)">📦 Quản lý kho hàng</button>
+            <button class="tab-btn" onclick="switchTab('inventory', this)">📦 Quản lý kho hàng</button>
             <button class="tab-btn owner-only" onclick="switchTab('roomSettings', this)">⚙️ Danh sách Phòng</button>
             <button class="tab-btn owner-only" onclick="switchTab('settings', this)">⚙️ Cài đặt</button>
             <button class="tab-btn" onclick="switchTab('invoices', this)">📜 Lịch sử hóa đơn</button>
@@ -684,7 +686,7 @@
                         <div class="panel-sub-tabs">
                             <button class="sub-tab-btn active" onclick="switchSubTab('subInvoices', this)">📜 Hóa đơn gần đây</button>
                             <button class="sub-tab-btn" onclick="switchSubTab('subTransactions', this)">💵 Phiếu Thu / Chi</button>
-                            <button id="createTransactionButton" class="btn-modal btn-confirm owner-only" style="display:none; margin-left:auto; padding:6px 12px; font-size:12px;" onclick="openTransactionModal()">+ Lập phiếu</button>
+                            <button id="createTransactionButton" class="btn-modal btn-confirm" style="display:none; margin-left:auto; padding:6px 12px; font-size:12px;" onclick="openTransactionModal()">+ Lập phiếu</button>
                         </div>
 
                         <div id="subInvoices" class="sub-tab-content active">
@@ -742,10 +744,14 @@
         <!-- PHÂN HỆ 3: KHO HÀNG -->
         <div id="inventory" class="section-view">
             <div class="card-panel">
-                <h3>📦 Quản Lý Kho hàng <button class="btn-modal btn-confirm" onclick="openAddInventoryModal()">+ Thêm món mới</button></h3>
+                <h3>📦 Quản Lý Kho hàng <button id="addInventoryButton" class="btn-modal btn-confirm owner-only" onclick="openAddInventoryModal()">+ Thêm món mới</button></h3>
+                <div class="form-group">
+                    <label for="inventorySearch">Tìm theo tên hoặc mã sản phẩm</label>
+                    <input type="search" id="inventorySearch" placeholder="Nhập tên hoặc mã sản phẩm" oninput="renderInventoryTable()">
+                </div>
                 <table class="custom-table">
                     <thead>
-                        <tr><th>Tên hàng hóa</th><th>Đơn vị tính</th><th>Giá bán</th><th>Tồn kho</th><th>Hành động</th></tr>
+                        <tr><th>Mã sản phẩm</th><th>Tên hàng hóa</th><th>Đơn vị tính</th><th>Giá bán</th><th>Tồn kho</th><th>Hành động</th></tr>
                     </thead>
                     <tbody id="inventoryTableBody"></tbody>
                 </table>
@@ -781,8 +787,12 @@
                             <input type="text" id="hotelNameInput" maxlength="120" placeholder="Tên hiển thị trên hóa đơn">
                         </div>
                         <div class="form-group">
-                            <label for="hotelHotlineInput">Số hotline</label>
+                            <label for="hotelHotlineInput">Số điện thoại</label>
                             <input type="tel" id="hotelHotlineInput" maxlength="40" placeholder="Ví dụ: 0900 000 000">
+                        </div>
+                        <div class="form-group">
+                            <label for="hotelTaxCodeInput">Mã số thuế</label>
+                            <input type="text" id="hotelTaxCodeInput" maxlength="40" placeholder="Mã số thuế cơ sở">
                         </div>
                         <div class="form-group hotel-settings-wide">
                             <label for="hotelAddressInput">Địa chỉ</label>
@@ -942,6 +952,18 @@
             </div>
 
             <div id="actionInfo" style="margin-bottom: 12px; font-size: 14px; color: var(--text-muted);"></div>
+            <div id="adminStayTimeEditor" class="guest-adjustment-panel" style="display:none;">
+                <h4>Điều chỉnh giờ lưu trú (quản trị viên)</h4>
+                <div class="form-group">
+                    <label for="stayCheckInInput">Giờ vào</label>
+                    <input type="datetime-local" id="stayCheckInInput">
+                </div>
+                <div class="form-group">
+                    <label for="stayCheckOutInput">Giờ ra đã chỉnh (để trống dùng giờ hiện tại)</label>
+                    <input type="datetime-local" id="stayCheckOutInput">
+                </div>
+                <button class="btn-modal btn-cancel" type="button" onclick="saveStayTimes()">Lưu giờ vào/ra</button>
+            </div>
 
             <div class="service-box">
                 <div class="service-box-header">🥤 Thêm dịch vụ</div>
@@ -1144,6 +1166,10 @@
             <div class="modal-header"><span id="invModalTitle">📦 Quản Lý Kho Hàng</span><span style="cursor:pointer;" onclick="closeModal('inventoryModal')">✕</span></div>
             <input type="hidden" id="invEditId">
             <div class="form-group">
+                <label>Mã sản phẩm:</label>
+                <input type="text" id="invCode" maxlength="80" required>
+            </div>
+            <div class="form-group">
                 <label>Tên hàng hóa:</label>
                 <input type="text" id="invName">
             </div>
@@ -1162,6 +1188,25 @@
             <div class="modal-buttons">
                 <button class="btn-modal btn-cancel" onclick="closeModal('inventoryModal')">Hủy</button>
                 <button class="btn-modal btn-confirm" onclick="saveInventoryData()">Lưu Lại</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="inventoryStockInModal">
+        <div class="modal-content">
+            <div class="modal-header"><span id="stockInTitle">📦 Nhập kho</span><span style="cursor:pointer;" onclick="closeModal('inventoryStockInModal')">✕</span></div>
+            <input type="hidden" id="stockInItemId">
+            <div class="form-group">
+                <label>Sản phẩm:</label>
+                <input type="text" id="stockInItemLabel" readonly>
+            </div>
+            <div class="form-group">
+                <label>Số lượng nhập:</label>
+                <input type="number" id="stockInQuantity" min="1" step="1">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal btn-cancel" onclick="closeModal('inventoryStockInModal')">Hủy</button>
+                <button class="btn-modal btn-confirm" onclick="confirmInventoryStockIn()">Nhập kho</button>
             </div>
         </div>
     </div>
@@ -1648,6 +1693,13 @@
             return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
         }
 
+        function toDateTimeLocal(value) {
+            const date = new Date(value);
+            if (!Number.isFinite(date.getTime())) return "";
+            const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+            return localDate.toISOString().slice(0, 16);
+        }
+
         function formatStoredDateTime(value) {
             const text = String(value ?? "");
             const match = /^(\d{2}\/\d{2}\/)(\d{2})(?=\s|$)/.exec(text);
@@ -1692,7 +1744,8 @@
                 const checkInTime = Number(rawCheckInTime);
                 if (!Number.isFinite(checkInTime)) return;
                 if (element.classList.contains("live-current-time")) {
-                    element.textContent = formatDateTime(now);
+                    const checkOutAt = element.dataset.checkoutAt ? Number(element.dataset.checkoutAt) : now;
+                    element.textContent = formatDateTime(Number.isFinite(checkOutAt) ? checkOutAt : now);
                 } else if (element.classList.contains("live-stay-duration")) {
                     element.textContent = formatStayDuration(checkInTime, now);
                 }
@@ -1706,10 +1759,8 @@
                 const card = element.closest(".room-card");
                 const lateCharge = card?.querySelector(".room-late-charge");
                 if (lateCharge) {
-                    lateCharge.hidden = priceDetails.surcharge <= 0;
-                    lateCharge.textContent = priceDetails.surcharge > 0
-                        ? `Phụ thu trả trễ${priceDetails.lateCheckoutNights ? ` (${priceDetails.lateCheckoutNights} đêm)` : ""}: +${priceDetails.surcharge.toLocaleString("vi-VN")}đ`
-                        : "";
+                    lateCharge.textContent = getLateCheckoutDisplay(priceDetails);
+                    lateCharge.hidden = !lateCharge.textContent;
                 }
                 if (String(currentActiveRoomId) === String(room.id) &&
                     document.getElementById("roomActionModal").style.display === "flex") {
@@ -2002,7 +2053,7 @@
         setInterval(updateLiveOccupancyDisplay, 1000);
 
         function switchTab(tabId, btn) {
-            if (["categorySettings", "inventory", "roomSettings", "settings"].includes(tabId) && currentUser?.role !== "owner") return;
+            if (["categorySettings", "roomSettings", "settings"].includes(tabId) && currentUser?.role !== "owner") return;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.section-view').forEach(s => s.classList.remove('active'));
             btn.classList.add('active');
@@ -2041,6 +2092,7 @@
             const fields = {
                 hotelNameInput: hotelInfo.name || "",
                 hotelHotlineInput: hotelInfo.hotline || "",
+                hotelTaxCodeInput: hotelInfo.taxCode || "",
                 hotelAddressInput: hotelInfo.address || "",
                 hotelBankNameInput: hotelInfo.bankName || "",
                 hotelBankAccountInput: hotelInfo.bankAccount || "",
@@ -2056,10 +2108,16 @@
         function renderDashboardHotelInfo() {
             const name = document.getElementById("dashboardHotelName");
             const address = document.getElementById("dashboardHotelAddress");
+            const hotline = document.getElementById("dashboardHotelHotline");
+            const taxCode = document.getElementById("dashboardHotelTaxCode");
             if (!name || !address) return;
             name.textContent = hotelInfo.name?.trim() || "Tên khách sạn / cơ sở chưa được thiết lập";
             address.textContent = hotelInfo.address?.trim() || "";
             address.style.display = hotelInfo.address?.trim() ? "block" : "none";
+            hotline.textContent = hotelInfo.hotline?.trim() ? `Số điện thoại: ${hotelInfo.hotline.trim()}` : "";
+            hotline.style.display = hotelInfo.hotline?.trim() ? "block" : "none";
+            taxCode.textContent = hotelInfo.taxCode?.trim() ? `Mã số thuế: ${hotelInfo.taxCode.trim()}` : "";
+            taxCode.style.display = hotelInfo.taxCode?.trim() ? "block" : "none";
         }
 
         function renderHotelLogoPreview() {
@@ -2082,6 +2140,7 @@
                 ...hotelInfo,
                 name: document.getElementById("hotelNameInput").value.trim(),
                 hotline: document.getElementById("hotelHotlineInput").value.trim(),
+                taxCode: document.getElementById("hotelTaxCodeInput").value.trim(),
                 address: document.getElementById("hotelAddressInput").value.trim(),
                 bankName: document.getElementById("hotelBankNameInput").value.trim(),
                 bankAccount: document.getElementById("hotelBankAccountInput").value.trim(),
@@ -2161,7 +2220,7 @@
             btn.classList.add('active');
             document.getElementById(subTabId).classList.add('active');
             document.getElementById("createTransactionButton").style.display =
-                subTabId === "subTransactions" && currentUser?.role === "owner" ? "inline-block" : "none";
+                subTabId === "subTransactions" && ["owner", "staff"].includes(currentUser?.role) ? "inline-block" : "none";
         }
 
         function updateStats() {
@@ -2222,102 +2281,118 @@
         }
 
         function calculateLateCheckoutCharge(room, category, now = new Date()) {
-            if (room.guestInfo.type !== "Qua đêm") return { surcharge: 0, stage: "", nights: 0 };
+            if (room.guestInfo.type !== "Qua đêm") return { surcharge: 0, stage: "", type: "", nights: 0 };
             const checkIn = new Date(room.guestInfo.checkInTime);
-            if (!Number.isFinite(checkIn.getTime())) return { surcharge: 0, stage: "", nights: 0 };
+            if (!Number.isFinite(checkIn.getTime())) return { surcharge: 0, stage: "", type: "", nights: 0 };
+            const calendarDay = date => Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000;
+            let baseNights = 1;
 
             const checkoutTime = /^\d{2}:\d{2}$/.test(category.checkoutTime || "")
                 ? category.checkoutTime
                 : "12:00";
             const [checkoutHour, checkoutMinute] = checkoutTime.split(":").map(Number);
-            if (checkoutHour > 23 || checkoutMinute > 59) return { surcharge: 0, stage: "", nights: 0 };
+            if (checkoutHour > 23 || checkoutMinute > 59) return { surcharge: 0, stage: "", type: "", nights: baseNights };
             const standardCheckout = new Date(checkIn);
             standardCheckout.setDate(standardCheckout.getDate() + 1);
             standardCheckout.setHours(checkoutHour, checkoutMinute, 0, 0);
 
-            const elapsedMinutes = (now.getTime() - standardCheckout.getTime()) / 60000;
-            if (elapsedMinutes <= 0) return { surcharge: 0, stage: "", nights: 0 };
+            if (now <= standardCheckout) return { surcharge: 0, stage: "", type: "", nights: baseNights };
+            const cycleStart = new Date(standardCheckout);
+            cycleStart.setDate(cycleStart.getDate() + calendarDay(now) - calendarDay(standardCheckout));
+            if (cycleStart > now) cycleStart.setDate(cycleStart.getDate() - 1);
+            baseNights = Math.max(2, calendarDay(cycleStart) - calendarDay(standardCheckout) + 2);
 
             const rules = getLateCheckoutRules(category);
-            if (!rules.length) return { surcharge: 0, stage: "", nights: 0 };
+            if (!rules.length) return { surcharge: 0, stage: "", type: "", nights: baseNights };
             const schedule = [];
             let previousOffset = 0;
             for (let index = 0; index < rules.length; index += 1) {
                 const rule = rules[index];
                 if (rule.type === "overnight") {
-                    if (index !== rules.length - 1) return { surcharge: 0, stage: "", nights: 0 };
+                    if (index !== rules.length - 1) return { surcharge: 0, stage: "", type: "", nights: baseNights };
                 } else if (rule.type !== "hourly" && rule.type !== "fixed") {
-                    return { surcharge: 0, stage: "", nights: 0 };
+                    return { surcharge: 0, stage: "", type: "", nights: baseNights };
                 }
                 const offsets = getLateCheckoutRangeOffsets(checkoutTime, rule.start, rule.end, previousOffset);
-                if (!offsets || offsets.startOffset !== previousOffset) return { surcharge: 0, stage: "", nights: 0 };
-                if (rule.type === "overnight" && offsets.endOffset !== 1440) return { surcharge: 0, stage: "", nights: 0 };
+                if (!offsets || offsets.startOffset !== previousOffset) return { surcharge: 0, stage: "", type: "", nights: baseNights };
+                if (rule.type === "overnight" && offsets.endOffset !== 1440) return { surcharge: 0, stage: "", type: "", nights: baseNights };
                 schedule.push({ ...rule, ...offsets });
                 previousOffset = offsets.endOffset;
             }
 
-            const overnightRule = schedule.find(rule => rule.type === "overnight");
-            const nights = overnightRule && elapsedMinutes >= overnightRule.startOffset
-                ? Math.floor((elapsedMinutes - overnightRule.startOffset) / 1440) + 1
-                : 0;
-            const cycleMinutes = overnightRule
-                ? elapsedMinutes % 1440
-                : Math.min(elapsedMinutes, 1440);
-            const activeRule = schedule.find(rule =>
-                cycleMinutes >= rule.startOffset && cycleMinutes < rule.endOffset
-            ) || (cycleMinutes >= schedule[schedule.length - 1].endOffset ? schedule[schedule.length - 1] : null);
+            const cycleMinutes = (now.getTime() - cycleStart.getTime()) / 60000;
+            const activeRule = schedule.find(rule => cycleMinutes >= rule.startOffset && cycleMinutes < rule.endOffset);
 
             let stageCharge = 0;
             let stage = "";
+            let type = "";
             if (activeRule?.type === "hourly") {
                 const billableHours = Math.ceil((cycleMinutes - activeRule.startOffset) / 60);
-                if (billableHours > 0) {
-                    stageCharge = Number.isFinite(Number(activeRule.hourlyPrice))
-                        ? billableHours * Number(activeRule.hourlyPrice)
-                        : Number(category.firstHourPrice || 0) +
-                            Math.max(0, billableHours - 1) * Number(category.nextHourPrice || 0);
-                    stage = `Khung tính giờ (${billableHours} giờ)`;
-                }
+                stageCharge = Number.isFinite(Number(activeRule.hourlyPrice))
+                    ? billableHours * Number(activeRule.hourlyPrice)
+                    : Number(category.firstHourPrice || 0) +
+                        Math.max(0, billableHours - 1) * Number(category.nextHourPrice || 0);
+                stage = "Phụ thu checkout muộn";
+                type = "hourly";
             } else if (activeRule?.type === "fixed") {
                 stageCharge = activeRule.amount;
-                stage = "Khung phụ thu cố định";
+                stage = "Phụ thu checkout muộn nửa ngày";
+                type = "fixed";
             } else if (activeRule?.type === "overnight") {
-                stage = "Khung cộng thêm tiền đêm";
+                stage = "overnight";
+                type = "overnight";
             }
 
             return {
-                surcharge: Math.max(0, stageCharge + nights * Number(category.overnightPrice || 0)),
+                surcharge: Math.max(0, stageCharge),
                 stage,
-                nights
+                type,
+                nights: baseNights + (type === "overnight" ? 1 : 0)
             };
         }
 
         function calculateRoomPriceDetails(room, now = new Date()) {
-            if (room.status === 'empty' || !room.guestInfo) return { roomCharge: 0, serviceTotal: 0, grandTotal: 0, surcharge: 0, adjustmentsTotal: 0, lateCheckoutStage: "", lateCheckoutNights: 0 };
+            if (room.status === 'empty' || !room.guestInfo) return { roomCharge: 0, serviceTotal: 0, grandTotal: 0, surcharge: 0, adjustmentsTotal: 0, lateCheckoutStage: "", lateCheckoutType: "", lateCheckoutNights: 0, roomNights: 0 };
 
             const cat = findRoomCategory(room.category) || categories[0];
-            if (!cat) return { roomCharge: 0, serviceTotal: 0, grandTotal: 0, surcharge: 0, adjustmentsTotal: 0, lateCheckoutStage: "", lateCheckoutNights: 0 };
+            if (!cat) return { roomCharge: 0, serviceTotal: 0, grandTotal: 0, surcharge: 0, adjustmentsTotal: 0, lateCheckoutStage: "", lateCheckoutType: "", lateCheckoutNights: 0, roomNights: 0 };
+            const billingTime = room.guestInfo.checkoutTimeOverride ? new Date(room.guestInfo.checkoutTimeOverride) : now;
+            const effectiveNow = Number.isFinite(billingTime.getTime()) ? billingTime : now;
             let roomCharge = 0;
             let surcharge = 0;
             let lateCheckoutStage = "";
             let lateCheckoutNights = 0;
+            let lateCheckoutType = "";
+            let roomNights = 0;
 
             if (room.guestInfo.type === 'Nghỉ giờ') {
                 const checkIn = new Date(room.guestInfo.checkInTime);
-                const diffHours = Math.max(1, Math.ceil((now - checkIn) / (1000 * 60 * 60)));
+                const diffHours = Math.max(1, Math.ceil((effectiveNow - checkIn) / (1000 * 60 * 60)));
 
                 roomCharge = cat.firstHourPrice + (diffHours - 1) * cat.nextHourPrice;
             } else if (room.guestInfo.type === 'Qua đêm') {
-                roomCharge = cat.overnightPrice;
-                const lateCheckout = calculateLateCheckoutCharge(room, cat, now);
+                const lateCheckout = calculateLateCheckoutCharge(room, cat, effectiveNow);
+                roomNights = lateCheckout.nights;
+                roomCharge = Number(cat.overnightPrice || 0) * roomNights;
                 surcharge = lateCheckout.surcharge;
                 lateCheckoutStage = lateCheckout.stage;
-                lateCheckoutNights = lateCheckout.nights;
+                lateCheckoutType = lateCheckout.type;
+                lateCheckoutNights = lateCheckout.type === "overnight" ? lateCheckout.nights : 0;
             }
 
             let serviceTotal = (room.guestInfo.services || []).reduce((sum, s) => sum + s.total, 0);
             const adjustmentsTotal = (room.guestInfo.priceAdjustments || []).reduce((sum, adjustment) => sum + adjustment.amount, 0);
-            return { roomCharge, serviceTotal, surcharge, adjustmentsTotal, lateCheckoutStage, lateCheckoutNights, grandTotal: roomCharge + serviceTotal + surcharge + adjustmentsTotal };
+            return { roomCharge, serviceTotal, surcharge, adjustmentsTotal, lateCheckoutStage, lateCheckoutType, lateCheckoutNights, roomNights, grandTotal: roomCharge + serviceTotal + surcharge + adjustmentsTotal };
+        }
+
+        function getLateCheckoutDisplay(priceDetails) {
+            if (priceDetails.lateCheckoutType === "overnight") {
+                return `Số đêm khách ở: ${priceDetails.roomNights} đêm`;
+            }
+            if (priceDetails.lateCheckoutType === "hourly" || priceDetails.lateCheckoutType === "fixed") {
+                return `${priceDetails.lateCheckoutStage}: +${priceDetails.surcharge.toLocaleString("vi-VN")}đ`;
+            }
+            return "";
         }
 
         /* GIAO DIỆN PHÒNG */
@@ -2512,15 +2587,18 @@
                 } else {
                     const priceDetails = calculateRoomPriceDetails(room);
                     const checkInTimestamp = new Date(room.guestInfo.checkInTime).getTime();
+                    const checkOutTimestamp = room.guestInfo.checkoutTimeOverride ? new Date(room.guestInfo.checkoutTimeOverride).getTime() : "";
                     const stayStart = Number.isFinite(checkInTimestamp) ? checkInTimestamp : "";
+                    const stayCheckout = Number.isFinite(checkOutTimestamp) ? checkOutTimestamp : "";
+                    const lateCheckoutDisplay = getLateCheckoutDisplay(priceDetails);
                     detailsHTML = `
                         <div class="room-details">
                             Hình thức: <b>${room.guestInfo.type}</b><br>
                             Giờ vào: ${escapeHTML(formatStoredDateTime(room.guestInfo.timeStr))}<br>
-                            Giờ ra: <b class="live-current-time" data-stay-start="${stayStart}"></b><br>
+                            Giờ ra: <b class="live-current-time" data-stay-start="${stayStart}" data-checkout-at="${stayCheckout}"></b><br>
                             Đã ở: <b class="live-stay-duration" data-stay-start="${stayStart}"></b>
                             <div class="room-price-tag">Tổng: <span class="live-room-total" data-room-id="${escapeHTML(room.id)}">${priceDetails.grandTotal.toLocaleString('vi-VN')} VNĐ</span></div>
-                            <div class="room-late-charge" ${priceDetails.surcharge > 0 ? "" : "hidden"}>${priceDetails.surcharge > 0 ? `Phụ thu trả trễ${priceDetails.lateCheckoutNights ? ` (${priceDetails.lateCheckoutNights} đêm)` : ""}: +${priceDetails.surcharge.toLocaleString("vi-VN")}đ` : ""}</div>
+                            <div class="room-late-charge" ${lateCheckoutDisplay ? "" : "hidden"}>${escapeHTML(lateCheckoutDisplay)}</div>
                         </div>`;
                     if (room.guestInfo.note?.trim()) {
                         detailsHTML += `<div class="room-guest-note"><b>Ghi chú:</b> ${escapeHTML(room.guestInfo.note.trim())}</div>`;
@@ -2630,13 +2708,18 @@
             document.getElementById("actionTitle").innerText = `Quản lý - ${room.name}`;
             document.getElementById("roomStayTypeSelect").value = room.guestInfo.type;
             const checkInTimestamp = new Date(room.guestInfo.checkInTime).getTime();
+            const checkOutTimestamp = room.guestInfo.checkoutTimeOverride ? new Date(room.guestInfo.checkoutTimeOverride).getTime() : "";
             const stayStart = Number.isFinite(checkInTimestamp) ? checkInTimestamp : "";
             document.getElementById("actionInfo").innerHTML = `
                 Hạng phòng: <b>${escapeHTML(findRoomCategory(room.category)?.name || room.category || "")}</b><br>
                 Giờ vào: <b>${escapeHTML(formatStoredDateTime(room.guestInfo.timeStr))}</b><br>
-                Giờ ra: <b class="live-current-time" data-stay-start="${stayStart}"></b><br>
+                Giờ ra: <b class="live-current-time" data-stay-start="${stayStart}" data-checkout-at="${Number.isFinite(checkOutTimestamp) ? checkOutTimestamp : ""}"></b><br>
                 Khách đã ở: <b class="live-stay-duration" data-stay-start="${stayStart}"></b>
             `;
+            const stayTimeEditor = document.getElementById("adminStayTimeEditor");
+            stayTimeEditor.style.display = currentUser?.role === "owner" ? "block" : "none";
+            document.getElementById("stayCheckInInput").value = toDateTimeLocal(room.guestInfo.checkInTime);
+            document.getElementById("stayCheckOutInput").value = toDateTimeLocal(room.guestInfo.checkoutTimeOverride);
             updateLiveOccupancyDisplay();
             if (document.getElementById("roomActionModal").style.display !== "flex") {
                 document.getElementById("guestStayNote").value = room.guestInfo.note || "";
@@ -2688,11 +2771,15 @@
             const adjustmentHTML = priceDetails.adjustmentsTotal !== 0
                 ? `<br>Điều chỉnh giá: <b class="guest-price-adjustment ${priceDetails.adjustmentsTotal < 0 ? "discount" : ""}">${priceDetails.adjustmentsTotal > 0 ? "+" : ""}${priceDetails.adjustmentsTotal.toLocaleString("vi-VN")} VNĐ</b>`
                 : "";
-            const surchargeHTML = priceDetails.surcharge > 0
-                ? `<br>Phụ thu trả phòng trễ${priceDetails.lateCheckoutStage ? ` (${escapeHTML(priceDetails.lateCheckoutStage)})` : ""}${priceDetails.lateCheckoutNights ? ` — ${priceDetails.lateCheckoutNights} đêm` : ""}: <b style="color:var(--warning);">+${priceDetails.surcharge.toLocaleString("vi-VN")} VNĐ</b>`
+            const lateCheckoutDisplay = getLateCheckoutDisplay(priceDetails);
+            const surchargeHTML = priceDetails.lateCheckoutType === "hourly" || priceDetails.lateCheckoutType === "fixed"
+                ? `<br>${escapeHTML(priceDetails.lateCheckoutStage)}: <b style="color:var(--warning);">+${priceDetails.surcharge.toLocaleString("vi-VN")} VNĐ</b>`
+                : "";
+            const nightsHTML = priceDetails.lateCheckoutType === "overnight"
+                ? `<br>${escapeHTML(lateCheckoutDisplay)}`
                 : "";
             document.getElementById("checkoutSummary").innerHTML = `
-                Tiền phòng (${escapeHTML(room.guestInfo.type)}): <b>${priceDetails.roomCharge.toLocaleString("vi-VN")} VNĐ</b>${surchargeHTML}<br>
+                Tiền phòng (${escapeHTML(room.guestInfo.type)}${room.guestInfo.type === "Qua đêm" ? `, ${priceDetails.roomNights} đêm` : ""}): <b>${priceDetails.roomCharge.toLocaleString("vi-VN")} VNĐ</b>${surchargeHTML}${nightsHTML}<br>
                 Tiền dịch vụ: <b>${priceDetails.serviceTotal.toLocaleString("vi-VN")} VNĐ</b>${adjustmentHTML}<hr style="margin: 6px 0; border: none; border-top: 1px dashed #ccc;">
                 TỔNG THANH TOÁN: <b style="color: var(--danger); font-size: 16px;">${priceDetails.grandTotal.toLocaleString("vi-VN")} VNĐ</b>
             `;
@@ -2815,6 +2902,42 @@
             saveData();
             renderRooms();
             await showNotice("Đã lưu ghi chú.");
+        }
+
+        async function saveStayTimes() {
+            if (currentUser?.role !== "owner") return;
+            const room = rooms.find(r => r.id === currentActiveRoomId);
+            if (!room || room.status !== "occupied" || !room.guestInfo) return;
+            const checkInValue = document.getElementById("stayCheckInInput").value;
+            const checkOutValue = document.getElementById("stayCheckOutInput").value;
+            const checkIn = new Date(checkInValue);
+            const checkOut = checkOutValue ? new Date(checkOutValue) : null;
+            const now = new Date();
+            if (!checkInValue || !Number.isFinite(checkIn.getTime())) {
+                await showNotice("Vui lòng nhập giờ vào hợp lệ.");
+                return;
+            }
+            if (checkIn > now) {
+                await showNotice("Giờ vào không được ở tương lai.");
+                return;
+            }
+            if (checkOutValue && (!checkOut || !Number.isFinite(checkOut.getTime()) || checkOut > now)) {
+                await showNotice("Giờ ra chỉnh phải hợp lệ và không được ở tương lai.");
+                return;
+            }
+            if (checkOut && checkOut < checkIn) {
+                await showNotice("Giờ ra không thể trước giờ vào.");
+                return;
+            }
+            if (!await confirmAction("Lưu giờ vào/ra đã điều chỉnh cho phòng này?", "Điều chỉnh giờ lưu trú")) return;
+            room.guestInfo.checkInTime = checkIn.toISOString();
+            room.guestInfo.timeStr = formatDateTime(checkIn);
+            if (checkOut) room.guestInfo.checkoutTimeOverride = checkOut.toISOString();
+            else delete room.guestInfo.checkoutTimeOverride;
+            saveData();
+            updateRoomActionModal(room);
+            renderRooms();
+            await showNotice("Đã lưu giờ vào/ra.");
         }
 
         async function confirmCheckIn() {
@@ -2944,10 +3067,13 @@
             let now;
             let priceDetails;
             while (true) {
-                priceDetails = calculateRoomPriceDetails(room, new Date());
-                const confirmationText = `Xác nhận thanh toán và trả phòng ${room.name}?\n${priceDetails.surcharge > 0 ? `Phụ thu trả trễ: ${priceDetails.surcharge.toLocaleString("vi-VN")} VNĐ\n` : ""}Tổng tiền: ${priceDetails.grandTotal.toLocaleString("vi-VN")} VNĐ`;
+                const configuredCheckout = room.guestInfo.checkoutTimeOverride ? new Date(room.guestInfo.checkoutTimeOverride) : null;
+                now = configuredCheckout && Number.isFinite(configuredCheckout.getTime()) ? configuredCheckout : new Date();
+                priceDetails = calculateRoomPriceDetails(room, now);
+                const lateCheckoutDisplay = getLateCheckoutDisplay(priceDetails);
+                const confirmationText = `Xác nhận thanh toán và trả phòng ${room.name}?\n${lateCheckoutDisplay ? `${lateCheckoutDisplay}\n` : ""}Tổng tiền: ${priceDetails.grandTotal.toLocaleString("vi-VN")} VNĐ`;
                 if (!await confirmAction(confirmationText, "Xác nhận thanh toán", true)) return;
-                now = new Date();
+                now = configuredCheckout && Number.isFinite(configuredCheckout.getTime()) ? configuredCheckout : new Date();
                 const finalPriceDetails = calculateRoomPriceDetails(room, now);
                 if (finalPriceDetails.grandTotal === priceDetails.grandTotal) {
                     priceDetails = finalPriceDetails;
@@ -2961,13 +3087,15 @@
                 guestType: room.guestInfo.type,
                 paidByUsername: currentUser?.username || "",
                 paidByFullName: currentUser?.fullName || "",
-                checkInTimeStr: room.guestInfo.timeStr,
+                checkInTimeStr: formatDateTime(new Date(room.guestInfo.checkInTime)),
                 checkOutTimeStr: formatDateTime(now),
-                date: now.toISOString().split('T')[0],
+                date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
                 basePrice: priceDetails.roomCharge,
                 surcharge: priceDetails.surcharge,
                 lateCheckoutStage: priceDetails.lateCheckoutStage,
+                lateCheckoutType: priceDetails.lateCheckoutType,
                 lateCheckoutNights: priceDetails.lateCheckoutNights,
+                roomNights: priceDetails.roomNights,
                 services: [...(room.guestInfo.services || [])],
                 serviceTotal: priceDetails.serviceTotal,
                 adjustments: [...(room.guestInfo.priceAdjustments || [])],
@@ -3382,20 +3510,31 @@
         function renderInventoryTable() {
             const tbody = document.getElementById("inventoryTableBody");
             tbody.innerHTML = "";
-            if (inventory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Kho hàng chưa có sản phẩm nào.</td></tr>`;
+            const query = document.getElementById("inventorySearch").value.trim().toLocaleLowerCase("vi");
+            const visibleItems = inventory.filter(item =>
+                String(item.name || "").toLocaleLowerCase("vi").includes(query) ||
+                String(item.code || "").toLocaleLowerCase("vi").includes(query)
+            );
+            if (visibleItems.length === 0) {
+                const message = inventory.length && query ? "Không tìm thấy sản phẩm phù hợp." : "Kho hàng chưa có sản phẩm nào.";
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">${message}</td></tr>`;
                 return;
             }
-            inventory.forEach((item) => {
+            visibleItems.forEach((item) => {
                 const tr = document.createElement("tr");
+                const ownerActions = currentUser?.role === "owner"
+                    ? `<span class="action-link action-edit" onclick="openEditInventoryModal(${Number(item.id)})">Sửa</span>
+                        <span class="action-link action-del" onclick="deleteInventoryItem(${Number(item.id)})">Xóa</span>`
+                    : "";
                 tr.innerHTML = `
-                    <td><b>${item.name}</b></td>
-                    <td>${item.unit}</td>
-                    <td>${item.price.toLocaleString('vi-VN')} VNĐ</td>
-                    <td><b>${item.stock}</b></td>
+                    <td>${escapeHTML(item.code || "")}</td>
+                    <td><b>${escapeHTML(item.name)}</b></td>
+                    <td>${escapeHTML(item.unit)}</td>
+                    <td>${Number(item.price || 0).toLocaleString('vi-VN')} VNĐ</td>
+                    <td><b>${Number(item.stock || 0)}</b></td>
                     <td>
-                        <span class="action-link action-edit" onclick="openEditInventoryModal(${item.id})">Sửa</span>
-                        <span class="action-link action-del" onclick="deleteInventoryItem(${item.id})">Xóa</span>
+                        <span class="action-link action-edit" onclick="openInventoryStockInModal(${Number(item.id)})">Nhập kho</span>
+                        ${ownerActions}
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -3403,8 +3542,10 @@
         }
 
         function openAddInventoryModal() {
+            if (currentUser?.role !== "owner") return;
             document.getElementById("invModalTitle").innerText = "📦 Thêm Hàng Hóa Mới";
             document.getElementById("invEditId").value = "";
+            document.getElementById("invCode").value = "";
             document.getElementById("invName").value = "";
             document.getElementById("invUnit").value = "";
             document.getElementById("invPrice").value = "";
@@ -3413,9 +3554,12 @@
         }
 
         function openEditInventoryModal(id) {
+            if (currentUser?.role !== "owner") return;
             const item = inventory.find(i => i.id === id);
+            if (!item) return;
             document.getElementById("invModalTitle").innerText = "📦 Sửa Món Hàng";
             document.getElementById("invEditId").value = item.id;
+            document.getElementById("invCode").value = item.code || "";
             document.getElementById("invName").value = item.name;
             document.getElementById("invUnit").value = item.unit;
             document.getElementById("invPrice").value = item.price;
@@ -3424,20 +3568,37 @@
         }
 
         async function saveInventoryData() {
+            if (currentUser?.role !== "owner") return;
             const editId = document.getElementById("invEditId").value;
+            const code = document.getElementById("invCode").value.trim();
             const name = document.getElementById("invName").value.trim();
             const unit = document.getElementById("invUnit").value.trim();
             const price = parseFloat(document.getElementById("invPrice").value);
             const stock = parseInt(document.getElementById("invStock").value);
 
-            if (!name || !unit || isNaN(price) || isNaN(stock)) { await showNotice("Vui lòng điền đầy đủ và chính xác thông tin hàng hóa."); return; }
+            if (!code || !name || !unit || !Number.isFinite(price) || price < 0 || !Number.isInteger(stock) || stock < 0) {
+                await showNotice("Vui lòng nhập mã sản phẩm, tên, đơn vị, giá bán và số lượng hợp lệ.");
+                return;
+            }
+            const normalizedName = name.toLocaleLowerCase("vi");
+            const normalizedCode = code.toLocaleLowerCase("vi");
+            const duplicateName = inventory.find(item => item.id != editId && String(item.name || "").trim().toLocaleLowerCase("vi") === normalizedName);
+            if (duplicateName) {
+                await showNotice(`Mặt hàng "${duplicateName.name}" đã có trong kho. Hãy dùng chức năng Nhập kho để bổ sung số lượng.`);
+                return;
+            }
+            if (inventory.some(item => item.id != editId && String(item.code || "").trim().toLocaleLowerCase("vi") === normalizedCode)) {
+                await showNotice("Mã sản phẩm này đã được sử dụng.");
+                return;
+            }
             if (!await confirmAction(`Xác nhận ${editId ? "cập nhật" : "thêm"} mặt hàng "${name}"?`, "Lưu mặt hàng")) return;
 
             if (editId) {
                 const item = inventory.find(i => i.id == editId);
-                item.name = name; item.unit = unit; item.price = price; item.stock = stock;
+                if (!item) return;
+                item.code = code; item.name = name; item.unit = unit; item.price = price; item.stock = stock;
             } else {
-                inventory.push({ id: Date.now(), name, unit, price, stock });
+                inventory.push({ id: Date.now(), code, name, unit, price, stock });
             }
 
             saveData();
@@ -3446,11 +3607,38 @@
         }
 
         async function deleteInventoryItem(id) {
+            if (currentUser?.role !== "owner") return;
             const item = inventory.find(i => i.id === id);
             if (!item || !await confirmAction(`Xóa "${item.name}" khỏi kho?`, "Xóa mặt hàng", true)) return;
             inventory = inventory.filter(i => i.id !== id);
             saveData();
             renderInventoryTable();
+        }
+
+        function openInventoryStockInModal(id) {
+            if (!["owner", "staff"].includes(currentUser?.role)) return;
+            const item = inventory.find(i => i.id === id);
+            if (!item) return;
+            document.getElementById("stockInItemId").value = item.id;
+            document.getElementById("stockInItemLabel").value = `${item.code || "Chưa có mã"} - ${item.name}`;
+            document.getElementById("stockInQuantity").value = "";
+            document.getElementById("inventoryStockInModal").style.display = "flex";
+        }
+
+        async function confirmInventoryStockIn() {
+            if (!["owner", "staff"].includes(currentUser?.role)) return;
+            const itemId = document.getElementById("stockInItemId").value;
+            const quantity = Number(document.getElementById("stockInQuantity").value);
+            const item = inventory.find(entry => String(entry.id) === itemId);
+            if (!item || !Number.isInteger(quantity) || quantity <= 0) {
+                await showNotice("Vui lòng nhập số lượng nguyên lớn hơn 0.");
+                return;
+            }
+            if (!await confirmAction(`Xác nhận nhập thêm ${quantity} ${item.unit} cho "${item.name}"?`, "Nhập kho")) return;
+            item.stock = Number(item.stock || 0) + quantity;
+            saveData();
+            renderInventoryTable();
+            closeModal("inventoryStockInModal");
         }
 
         /* NHÂN SỰ */
@@ -3627,13 +3815,14 @@
 
         /* THU CHI & HÓA ĐƠN */
         function openTransactionModal() {
+            if (!["owner", "staff"].includes(currentUser?.role)) return;
             document.getElementById("txAmount").value = "";
             document.getElementById("txNote").value = "";
             document.getElementById("transactionModal").style.display = "flex";
         }
 
         async function saveTransaction() {
-            if (currentUser?.role !== "owner") return;
+            if (!["owner", "staff"].includes(currentUser?.role)) return;
             const type = document.getElementById("txType").value;
             const amount = parseFloat(document.getElementById("txAmount").value);
             const note = document.getElementById("txNote").value.trim();
@@ -3710,9 +3899,12 @@
                 servicesListHTML = inv.services.map(s => `• ${s.name} (x${s.qty}): ${s.total.toLocaleString('vi-VN')}đ`).join("<br>");
             }
 
-            let surchargeHTML = inv.surcharge > 0
-                ? `<br>Phụ thu trả phòng trễ${inv.lateCheckoutStage ? ` (${escapeHTML(inv.lateCheckoutStage)})` : ""}${inv.lateCheckoutNights ? ` — ${inv.lateCheckoutNights} đêm` : ""}: ${inv.surcharge.toLocaleString('vi-VN')}đ`
-                : '';
+            let surchargeHTML = Number(inv.surcharge) > 0
+                ? `<br>${escapeHTML(inv.lateCheckoutStage || "Phụ thu checkout muộn")}: ${Number(inv.surcharge).toLocaleString('vi-VN')}đ`
+                : "";
+            const nightsHTML = inv.lateCheckoutType === "overnight"
+                ? `<br>Số đêm khách ở: ${Number(inv.roomNights || inv.lateCheckoutNights || 0)} đêm`
+                : "";
             const adjustments = inv.adjustments || [];
             const adjustmentListHTML = adjustments.length
                 ? `<br>${adjustments.map(adjustment => `• ${adjustment.amount > 0 ? "Tăng" : "Giảm"} ${Math.abs(adjustment.amount).toLocaleString("vi-VN")}đ — ${escapeHTML(adjustment.reason)}`).join("<br>")}`
@@ -3731,7 +3923,7 @@
                 <hr style="margin: 8px 0; border: none; border-top: 1px dashed #ccc;">
                 <b>Dịch vụ phát sinh:</b><br>${servicesListHTML}<br>
                 <hr style="margin: 8px 0; border: none; border-top: 1px dashed #ccc;">
-                Tiền Phòng: ${inv.basePrice.toLocaleString('vi-VN')}đ${surchargeHTML}<br>
+                Tiền Phòng${inv.guestType === "Qua đêm" && inv.roomNights ? ` (${Number(inv.roomNights)} đêm)` : ""}: ${inv.basePrice.toLocaleString('vi-VN')}đ${surchargeHTML}${nightsHTML}<br>
                 Tiền Dịch Vụ: ${inv.serviceTotal.toLocaleString('vi-VN')}đ<br>
                 Điều chỉnh giá (${adjustmentsTotal.toLocaleString("vi-VN")}đ):${adjustmentListHTML}<br>
                 ${noteHTML}<br>
@@ -3763,7 +3955,8 @@
                 : "";
             const hotelContact = [
                 printHotelInfo.address && `Địa chỉ: ${escapeHTML(printHotelInfo.address)}`,
-                printHotelInfo.hotline && `Hotline: ${escapeHTML(printHotelInfo.hotline)}`
+                printHotelInfo.hotline && `Số điện thoại: ${escapeHTML(printHotelInfo.hotline)}`,
+                printHotelInfo.taxCode && `Mã số thuế: ${escapeHTML(printHotelInfo.taxCode)}`
             ].filter(Boolean);
             const bankDetails = [
                 printHotelInfo.bankName && `Ngân hàng: ${escapeHTML(printHotelInfo.bankName)}`,
@@ -3777,7 +3970,11 @@
                 <tr><td>Điều chỉnh: ${escapeHTML(adjustment.reason || "")}</td><td>${Number(adjustment.amount) < 0 ? "-" : "+"}${money(Math.abs(Number(adjustment.amount) || 0))}</td></tr>
             `);
             const surchargeRow = Number(inv.surcharge) > 0
-                ? `<tr><td>Phụ thu trả phòng trễ${inv.lateCheckoutNights ? ` (${Number(inv.lateCheckoutNights)} đêm)` : ""}</td><td>${money(inv.surcharge)}</td></tr>`
+                ? `<tr><td>${escapeHTML(inv.lateCheckoutStage || "Phụ thu checkout muộn")}</td><td>${money(inv.surcharge)}</td></tr>`
+                : "";
+            const roomNightsLabel = inv.guestType === "Qua đêm" && inv.roomNights ? ` (${Number(inv.roomNights)} đêm)` : "";
+            const overnightRow = inv.lateCheckoutType === "overnight"
+                ? `<tr><td>Số đêm khách ở</td><td>${Number(inv.roomNights || 0)} đêm</td></tr>`
                 : "";
             const note = inv.guestNote
                 ? `<div class="invoice-print-note"><b>Ghi chú:</b> ${escapeHTML(inv.guestNote).replace(/\n/g, "<br>")}</div>`
@@ -3809,8 +4006,9 @@
                     <table>
                         <thead><tr><th>Nội dung</th><th>Thành tiền</th></tr></thead>
                         <tbody>
-                            <tr><td>Tiền phòng</td><td>${money(inv.basePrice)}</td></tr>
+                            <tr><td>Tiền phòng${roomNightsLabel}</td><td>${money(inv.basePrice)}</td></tr>
                             ${surchargeRow}
+                            ${overnightRow}
                             ${serviceRows.join("") || ""}
                             ${adjustmentRows.join("") || ""}
                         </tbody>

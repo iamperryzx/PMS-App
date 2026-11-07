@@ -138,7 +138,7 @@ if (!gotSingleInstanceLock) {
 
     ipcMain.handle("updates:install", () => {
       if (!app.isPackaged) return false;
-      autoUpdater.quitAndInstall();
+      autoUpdater.quitAndInstall(true, true);
       return true;
     });
 

@@ -310,14 +310,22 @@
             width: 100%;
         }
         .late-rule-row { display: grid; grid-template-columns: minmax(140px, 1.1fr) repeat(2, minmax(105px, .75fr)) minmax(120px, .85fr) 32px; }
+        .late-rule-row.overnight { grid-template-columns: minmax(140px, 1.1fr) minmax(105px, .75fr) 32px; }
         .late-rule-time-field { min-width: 0; }
         .late-rule-time-field label { display: block; margin-bottom: 4px; color: var(--text-muted); font-size: 11px; }
         .late-rule-row .late-rule-description { grid-column: 1 / 5; margin-top: -4px; color: var(--text-muted); font-size: 11px; line-height: 1.4; }
+        .late-rule-row.overnight .late-rule-description { grid-column: 1 / -1; }
         .late-checkout-settings { margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: #f8f6f1; }
         .late-checkout-settings .form-group { margin: 0; max-width: 240px; }
         .late-checkout-hint { margin-top: 10px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+        .report-date-control { position: relative; display: flex; gap: 8px; align-items: center; }
+        .report-date-control > input[type="text"] { min-width: 0; flex: 1; }
+        .report-date-picker-button { flex: 0 0 42px; width: 42px; height: 40px; border: 1px solid var(--border); border-radius: 6px; background: #fff; cursor: pointer; }
+        .report-date-picker-button:hover { border-color: var(--primary); background: #f8fafc; }
+        #reports .report-date-control .report-date-picker-native { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; opacity: 0; pointer-events: none; }
         @media (max-width: 620px) {
             .late-rule-row { grid-template-columns: minmax(0, 1fr) 32px; }
+            .late-rule-row.overnight { grid-template-columns: minmax(0, 1fr) 32px; }
             .late-rule-row .late-rule-type, .late-rule-row .late-rule-time-field, .late-rule-row .late-rule-amount, .late-rule-row .late-rule-hourly-price { grid-column: 1; }
             .late-rule-row .late-rule-description { grid-column: 1 / -1; }
             .late-rule-row .btn-remove-rule { grid-column: 2; grid-row: 2; }
@@ -858,11 +866,19 @@
                 <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px; background: #f1f5f9; padding: 12px; border-radius: 8px; flex-wrap: wrap;">
                     <div class="form-group" style="margin-bottom:0; flex:1; min-width: 150px;">
                         <label>Từ ngày:</label>
-                        <input type="text" id="reportStartDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" aria-label="Từ ngày (dd/mm/yyyy)" oninput="formatReportDateInput(this)" onchange="updateReports()">
+                        <div class="report-date-control">
+                            <input type="text" id="reportStartDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" aria-label="Từ ngày (dd/mm/yyyy)" oninput="formatReportDateInput(this)" onchange="updateReports()">
+                            <button class="report-date-picker-button" type="button" aria-label="Chọn ngày bắt đầu" title="Chọn ngày" onclick="openReportDatePicker('reportStartDatePicker', 'reportStartDate')">📅</button>
+                            <input class="report-date-picker-native" type="date" id="reportStartDatePicker" tabindex="-1" aria-hidden="true" onchange="setReportDateFromPicker(this, 'reportStartDate')">
+                        </div>
                     </div>
                     <div class="form-group" style="margin-bottom:0; flex:1; min-width: 150px;">
                         <label>Đến ngày:</label>
-                        <input type="text" id="reportEndDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" aria-label="Đến ngày (dd/mm/yyyy)" oninput="formatReportDateInput(this)" onchange="updateReports()">
+                        <div class="report-date-control">
+                            <input type="text" id="reportEndDate" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" aria-label="Đến ngày (dd/mm/yyyy)" oninput="formatReportDateInput(this)" onchange="updateReports()">
+                            <button class="report-date-picker-button" type="button" aria-label="Chọn ngày kết thúc" title="Chọn ngày" onclick="openReportDatePicker('reportEndDatePicker', 'reportEndDate')">📅</button>
+                            <input class="report-date-picker-native" type="date" id="reportEndDatePicker" tabindex="-1" aria-hidden="true" onchange="setReportDateFromPicker(this, 'reportEndDate')">
+                        </div>
                     </div>
                     <div style="align-self: flex-end;">
                         <button class="btn-modal btn-confirm" onclick="resetReportFilter()">Xem tất cả</button>
@@ -1062,7 +1078,7 @@
                     <label for="catCheckoutTime">Giờ Check-out chuẩn</label>
                     <input type="time" id="catCheckoutTime" value="12:00">
                 </div>
-                <p class="late-checkout-hint">Các khung phải nối tiếp nhau từ giờ check-out chuẩn. Khi đến giờ bắt đầu khung cộng đêm, hệ thống cộng đúng một đêm và bỏ phụ thu của các khung trước. Đến 00:00 bắt đầu chu kỳ mới, giữ nguyên khung đã cài đặt và dùng giờ check-out chuẩn vào ngày hôm sau.</p>
+                <p class="late-checkout-hint">Các khung phải nối tiếp nhau từ giờ check-out chuẩn. Với khung cộng đêm, chỉ cần chọn giờ bắt đầu; giờ kết thúc tự động là giờ check-out chuẩn. Khi đến giờ bắt đầu, hệ thống cộng đúng một đêm và bỏ phụ thu trước; 00:00 bắt đầu chu kỳ mới.</p>
             </div>
 
             <div id="lateRulesContainer" style="max-height: 320px; overflow-y: auto; margin-bottom: 15px; padding-right: 4px;"></div>
@@ -2252,7 +2268,7 @@
                 const normalizedRule = {
                     type: rule.type,
                     start: rule.start || previousEnd,
-                    end: rule.end || (rule.type === "overnight" ? checkoutTime : ""),
+                    end: rule.type === "overnight" ? checkoutTime : rule.end || "",
                     amount: Number(rule.amount) || 0,
                     ...(rule.hourlyPrice !== undefined ? { hourlyPrice: Number(rule.hourlyPrice) || 0 } : {})
                 };
@@ -3170,14 +3186,16 @@
             rows.forEach((row, index) => {
                 const type = row.querySelector(".late-rule-type").value;
                 const isOvernight = type === "overnight";
+                row.classList.toggle("overnight", isOvernight);
                 row.querySelector(".late-rule-type").querySelector('option[value="overnight"]').disabled =
                     !isOvernight && (index !== rows.length - 1 || Boolean(overnightRow));
+                row.querySelector(".late-rule-time-field.end").hidden = isOvernight;
                 row.querySelector(".late-rule-amount").hidden = type !== "fixed";
                 row.querySelector(".late-rule-hourly-price").hidden = type !== "hourly";
                 const descriptions = {
                     hourly: "Trong khoảng giờ này: đơn giá riêng của khung nhân số giờ trễ (làm tròn lên).",
                     fixed: "Trong khoảng giờ này: thay mức phụ thu trước bằng số tiền cố định bên cạnh.",
-                    overnight: "Đến giờ bắt đầu khung: cộng 1 đêm và bỏ phụ thu trước; 00:00 bắt đầu chu kỳ mới."
+                    overnight: "Từ giờ này cộng 1 đêm; giờ kết thúc tự động là giờ check-out chuẩn. 00:00 bắt đầu chu kỳ mới."
                 };
                 row.querySelector(".late-rule-description").textContent = descriptions[type];
                 row.querySelector(".late-rule-stage").textContent = `Khung ${index + 1}`;
@@ -3245,7 +3263,7 @@
             startField.append(startLabel, startTime);
 
             const endField = document.createElement("div");
-            endField.className = "late-rule-time-field";
+            endField.className = "late-rule-time-field end";
             const endLabel = document.createElement("label");
             endLabel.textContent = "Đến giờ";
             endField.append(endLabel, endTime);
@@ -3400,7 +3418,7 @@
                 const row = rows[index];
                 const type = row.querySelector(".late-rule-type").value;
                 const start = row.querySelector(".late-rule-start").value;
-                const end = row.querySelector(".late-rule-end").value;
+                const end = type === "overnight" ? checkoutTime : row.querySelector(".late-rule-end").value;
                 const offsets = getLateCheckoutRangeOffsets(checkoutTime, start, end, previousOffset);
                 if (!offsets || offsets.startOffset !== previousOffset) {
                     await showNotice(`Khung ${index + 1} cần nối tiếp khung trước. Hãy chọn giờ bắt đầu ${index ? "trùng giờ kết thúc của khung trước" : "bằng giờ check-out chuẩn"} và một giờ kết thúc hợp lệ trong chu kỳ.`);
@@ -3408,7 +3426,7 @@
                 }
                 if (type === "overnight") {
                     if (index !== rows.length - 1 || !lateRules.length || offsets.endOffset !== 1440) {
-                        await showNotice("Khung cộng thêm một đêm phải nằm cuối danh sách và kết thúc vào giờ check-out chuẩn ngày hôm sau.");
+                        await showNotice("Khung cộng thêm một đêm phải nằm cuối danh sách và bắt đầu sau các khung phụ thu trước.");
                         return;
                     }
                     lateRules.push({ type: "overnight", start, end });
@@ -4095,6 +4113,8 @@
         function resetReportFilter() {
             document.getElementById("reportStartDate").value = "";
             document.getElementById("reportEndDate").value = "";
+            document.getElementById("reportStartDatePicker").value = "";
+            document.getElementById("reportEndDatePicker").value = "";
             updateReports();
         }
 
@@ -4118,6 +4138,20 @@
             const date = new Date(Date.UTC(year, month - 1, day));
             if (year < 1000 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
             return `${yearText}-${monthText}-${dayText}`;
+        }
+
+        function openReportDatePicker(pickerId, inputId) {
+            const picker = document.getElementById(pickerId);
+            picker.value = parseReportDate(document.getElementById(inputId).value) || "";
+            if (typeof picker.showPicker === "function") picker.showPicker();
+            else picker.click();
+        }
+
+        function setReportDateFromPicker(picker, inputId) {
+            if (!picker.value) return;
+            const [year, month, day] = picker.value.split("-");
+            document.getElementById(inputId).value = `${day}/${month}/${year}`;
+            updateReports();
         }
 
         function updateReports() {

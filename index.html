@@ -363,6 +363,27 @@
             font-size: 13px;
             outline: none;
         }
+        .service-quantity-control { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .service-qty-input { width: 58px; min-height: 34px; padding: 5px 6px; border: 1px solid #e2ddd2; border-radius: 8px; background: #fffefa; color: #2d394a; font: inherit; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease; }
+        .service-qty-input:focus { border-color: #b99a5c; outline: 0; box-shadow: 0 0 0 3px rgba(185,154,92,.14); }
+        .service-qty-input::-webkit-inner-spin-button, .service-qty-input::-webkit-outer-spin-button { opacity: 1; }
+        .service-quantity-control .btn-qty { min-width: 32px; min-height: 32px; margin: 0; padding: 3px 8px; }
+        .service-quantity-control .btn-qty:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; transform: none; }
+        .service-table-body tr { animation: service-row-enter .22s ease both; }
+        .service-table-body td { vertical-align: middle; }
+        .service-table-body td:nth-child(3) { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+        @keyframes service-row-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes modal-fade-enter { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modal-panel-enter { from { opacity: 0; transform: translateY(12px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .modal[style*="display: flex"] { animation: modal-fade-enter .18s ease both; }
+        .modal[style*="display: flex"] .modal-content { animation: modal-panel-enter .24s cubic-bezier(.2,.7,.25,1) both; }
+        .custom-table tbody tr { transition: background-color .18s ease, color .18s ease; }
+        :focus-visible { outline: 3px solid rgba(185,154,92,.45); outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) {
+            .modal[style*="display: flex"], .modal[style*="display: flex"] .modal-content,
+            .service-table-body tr { animation: none !important; }
+            .service-qty-input, .custom-table tbody tr { transition: none !important; }
+        }
         .guest-adjustment-panel, .guest-note-panel { padding: 14px; margin: 12px 0; border: 1px solid #e6e0d4; border-radius: 10px; background: #fffefa; }
         .guest-adjustment-panel h4, .guest-note-panel h4 { margin-bottom: 10px; color: #34445a; font-size: 13px; }
         .guest-adjustment-fields { display: grid; grid-template-columns: minmax(120px, 0.8fr) minmax(140px, 1fr); gap: 10px; }
@@ -388,11 +409,12 @@
             border: 1px solid #e5dfd3;
             box-shadow: 0 8px 24px rgba(38,45,54,0.045), 0 1px 2px rgba(38,45,54,0.035);
         }
-        .dashboard-header { position: relative; overflow: hidden; padding: 22px 26px; border-radius: 16px; }
+        .dashboard-header { position: relative; overflow: hidden; padding: 22px 26px; border-radius: 16px; align-items: flex-start; }
         .dashboard-header::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(180deg,#d9c18e,#a9874d); }
+        .app-title { flex: 1 1 280px; min-width: 250px; }
         .app-title h1 { color: #25364a; letter-spacing: -0.025em; }
         .app-title p { color: #758091; }
-        .stats-group { gap: 10px; }
+        .stats-group { flex: 0 1 auto; justify-content: flex-end; gap: 10px; margin-left: auto; }
         .stat-card { min-width: 96px; padding: 11px 15px; background: #f3f0e9; border: 1px solid #ebe5d9; border-radius: 10px; }
         .stat-card .number { color: #28394c; }
         .branch-badge { background: #f6f0e3; border-color: #e7d8b8; color: #876b3d; }
@@ -400,6 +422,10 @@
         .user-name { color: #34445a; }
         .btn-logout { background: #a64d4d; }
         .btn-logout:hover { background: #8d3e40; }
+        @media (max-width: 1480px) {
+            .app-title { flex-basis: 100%; }
+            .stats-group { width: 100%; justify-content: flex-start; margin-left: 0; }
+        }
         .nav-tabs { gap: 6px; border-bottom: 1px solid #dcd5c9; padding: 0 4px 8px; }
         .tab-btn { color: #667386; border-radius: 8px 8px 5px 5px; }
         .tab-btn:hover { color: #28394c; background: #eeeae1; }
@@ -992,7 +1018,7 @@
                 </div>
                 <table class="custom-table" style="font-size: 12px; margin-top: 12px;">
                     <thead><tr><th>Tên món</th><th>Số lượng (+/-)</th><th>Thành tiền</th><th>Thao tác</th></tr></thead>
-                    <tbody id="serviceTableBody"></tbody>
+                    <tbody id="serviceTableBody" class="service-table-body"></tbody>
                 </table>
             </div>
 
@@ -2871,14 +2897,16 @@
                 room.guestInfo.services.forEach((s, idx) => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
-                        <td>${s.name}</td>
+                        <td>${escapeHTML(s.name)}</td>
                         <td>
-                            <button class="btn-qty" onclick="changeServiceQty(${idx}, -1)">-</button>
-                            <b>${s.qty}</b>
-                            <button class="btn-qty" onclick="changeServiceQty(${idx}, 1)">+</button>
+                            <div class="service-quantity-control">
+                                <button class="btn-qty" type="button" aria-label="Giảm số lượng ${escapeHTML(s.name)}" ${s.qty <= 1 ? "disabled" : ""} onclick="changeServiceQty(${idx}, ${s.qty - 1})">−</button>
+                                <input class="service-qty-input" type="number" min="1" step="1" inputmode="numeric" aria-label="Số lượng ${escapeHTML(s.name)}" value="${Number(s.qty)}" onchange="changeServiceQty(${idx}, this.value)">
+                                <button class="btn-qty" type="button" aria-label="Tăng số lượng ${escapeHTML(s.name)}" onclick="changeServiceQty(${idx}, ${s.qty + 1})">+</button>
+                            </div>
                         </td>
-                        <td>${s.total.toLocaleString('vi-VN')}đ</td>
-                        <td><button class="btn-modal btn-danger" style="padding:2px 6px; font-size:12px;" onclick="deleteService(${idx})">Xóa</button></td>
+                        <td>${Number(s.total).toLocaleString('vi-VN')}đ</td>
+                        <td><button class="btn-modal btn-danger" type="button" style="padding:2px 6px; font-size:12px;" onclick="deleteService(${idx})">Xóa</button></td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -3083,28 +3111,36 @@
             renderRooms();
         }
 
-        async function changeServiceQty(index, delta) {
+        async function changeServiceQty(index, requestedQty) {
             const room = rooms.find(r => r.id === currentActiveRoomId);
-            const item = room.guestInfo.services[index];
-            if (delta < 0) {
-                const action = item.qty === 1 ? `xóa ${item.name} khỏi dịch vụ phòng` : `giảm 1 ${item.name}`;
-                if (!await confirmAction(`Xác nhận ${action}?`, "Điều chỉnh dịch vụ", item.qty === 1)) return;
+            const item = room?.guestInfo?.services?.[index];
+            if (!item) {
+                await showNotice("Không tìm thấy dịch vụ cần điều chỉnh.");
+                return;
             }
+            const quantity = Number(requestedQty);
+            if (!Number.isSafeInteger(quantity) || quantity < 1) {
+                await showNotice("Số lượng phải là số nguyên lớn hơn 0.");
+                updateRoomActionModal(room);
+                return;
+            }
+            const delta = quantity - item.qty;
+            if (delta === 0) return;
             const invItem = inventory.find(i => i.name === item.name);
 
             if (delta > 0) {
-                if (!invItem || invItem.stock < 1) { await showNotice("Không đủ tồn kho!"); return; }
-                item.qty += 1;
-                if(invItem) invItem.stock -= 1;
-            } else if (delta < 0) {
-                item.qty -= 1;
-                if(invItem) invItem.stock += 1;
-                if (item.qty <= 0) {
-                    room.guestInfo.services.splice(index, 1);
+                if (!invItem || invItem.stock < delta) {
+                    await showNotice("Số lượng tồn kho không đủ.");
+                    updateRoomActionModal(room);
+                    return;
                 }
+                invItem.stock -= delta;
+            } else if (delta < 0) {
+                if (invItem) invItem.stock += Math.abs(delta);
             }
 
-            if (item && item.qty > 0) item.total = item.qty * item.price;
+            item.qty = quantity;
+            item.total = item.qty * item.price;
             saveData();
             updateRoomActionModal(room);
         }
@@ -3112,11 +3148,11 @@
         async function addGuestService() {
             if (inventory.length === 0) { await showNotice("Kho hiện đang trống!"); return; }
             const select = document.getElementById("serviceSelect");
-            const qty = parseInt(document.getElementById("serviceQty").value);
+            const qty = Number(document.getElementById("serviceQty").value);
             const itemName = select.value;
             const invItem = inventory.find(i => i.name === itemName);
-            if (!invItem || !qty || invItem.stock < qty) { await showNotice("Số lượng tồn kho không đủ!"); return; }
-            if (!invItem || !qty || invItem.stock < qty) { await showNotice("Số lượng tồn kho không đủ!"); return; }
+            if (!Number.isSafeInteger(qty) || qty < 1) { await showNotice("Số lượng phải là số nguyên lớn hơn 0."); return; }
+            if (!invItem || invItem.stock < qty) { await showNotice("Số lượng tồn kho không đủ!"); return; }
             
             invItem.stock -= qty;
             const room = rooms.find(r => r.id === currentActiveRoomId);

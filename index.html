@@ -134,6 +134,7 @@
         .app-title h1 { font-size: 22px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
         .app-title p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
         #dashboardHotelName { color: #566578; font-weight: 600; }
+        #dashboardHotelBank { color: #758091; }
         #dashboardHotelAddress { color: #758091; }
         #dashboardHotelAddress::before { content: "Địa chỉ: "; font-weight: 600; }
         
@@ -640,6 +641,7 @@
             <div class="app-title">
                 <h1>🏨 PMS Enterprise Pro</h1>
                 <p id="dashboardHotelName">Tên khách sạn / cơ sở</p>
+                <p id="dashboardHotelBank" style="display:none;"></p>
                 <p id="dashboardHotelAddress" style="display:none;"></p>
                 <p id="dashboardHotelHotline" style="display:none;"></p>
                 <p id="dashboardHotelTaxCode" style="display:none;"></p>
@@ -2123,11 +2125,19 @@
 
         function renderDashboardHotelInfo() {
             const name = document.getElementById("dashboardHotelName");
+            const bank = document.getElementById("dashboardHotelBank");
             const address = document.getElementById("dashboardHotelAddress");
             const hotline = document.getElementById("dashboardHotelHotline");
             const taxCode = document.getElementById("dashboardHotelTaxCode");
             if (!name || !address) return;
             name.textContent = hotelInfo.name?.trim() || "Tên khách sạn / cơ sở chưa được thiết lập";
+            const bankDetails = [
+                hotelInfo.bankName?.trim() && `Ngân hàng: ${hotelInfo.bankName.trim()}`,
+                hotelInfo.bankAccount?.trim() && `Số tài khoản: ${hotelInfo.bankAccount.trim()}`,
+                hotelInfo.bankAccountHolder?.trim() && `Chủ tài khoản: ${hotelInfo.bankAccountHolder.trim()}`
+            ].filter(Boolean);
+            bank.textContent = bankDetails.join(" - ");
+            bank.style.display = bankDetails.length ? "block" : "none";
             address.textContent = hotelInfo.address?.trim() || "";
             address.style.display = hotelInfo.address?.trim() ? "block" : "none";
             hotline.textContent = hotelInfo.hotline?.trim() ? `Số điện thoại: ${hotelInfo.hotline.trim()}` : "";
